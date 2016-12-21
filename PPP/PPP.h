@@ -65,8 +65,11 @@ class String
 	String(ENoInit) {}
 public:
 	String() : m_data(nullptr), m_length(0) {}
-	String(char* data);
+	String(const char* data);
 	String(const String& str, int offset, int length);
+	String(const String& str);
+	String(String&& str);
+	~String();
 
 	char charAt(int index) const;
 
@@ -84,9 +87,9 @@ public:
 	String operator+(const String& str) const;
 	bool operator==(const String& str) const;
 	const char* operator*() const;
-
-
 };
+
+String operator+(const char* a, const String& b);
 
 
 

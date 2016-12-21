@@ -6,3 +6,5 @@
 *.opendb
 *.suo
 *.user
+/PPP/x64/Debug
+/x64/Debug

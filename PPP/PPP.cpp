@@ -18,8 +18,8 @@ struct WinApplicationState
 	ID3D11DeviceContext* d3dImmediateContext;
 	ID3D11RenderTargetView* renderTargetView;
 	IDXGISwapChain* swapChain;
-	float width     = DEFAULT_WINDOW_WIDTH;
-	float height    = DEFAULT_WINDOW_HEIGHT;
+	int width     = DEFAULT_WINDOW_WIDTH;
+	int height    = DEFAULT_WINDOW_HEIGHT;
 	float frameRate = DEFAULT_FRAME_RATE;
 };
 
@@ -346,7 +346,7 @@ const Color Color::springGreen = Color(0, 255, 127);
 
 //string ---------------------------------------------------------------------------------------------
 
-String::String(char* data)
+String::String(const char* data)
 {
 	m_length = strlen(data);
 	m_data = new char[m_length + 1];
@@ -355,14 +355,38 @@ String::String(char* data)
 
 String::String(const String& str, int offset, int length)
 {
-	if (m_data)
-	{
-		delete[] m_data;
-	}
 	m_length = length;
 	m_data = new char[length + 1];
 	memcpy(m_data, str.m_data + offset, length);
 	m_data[m_length] = '\0';
+}
+
+String::String(const String & str)
+{
+	m_length = str.m_length;
+	if (m_length > 0)
+	{
+		m_data = new char[m_length + 1];
+		memcpy(m_data, str.m_data, m_length + 1);
+	}
+	
+}
+
+String::String(String && str)
+{
+	m_data   = str.m_data;
+	m_length = str.m_length;
+
+	str.m_data = nullptr;
+	str.m_length = 0;
+}
+
+String::~String()
+{
+	if (m_data)
+	{
+		delete[] m_data;
+	}
 }
 
 int String::length() const
@@ -399,11 +423,21 @@ String String::subString(int beginIndex, int endIndex) const
 
 String String::toLowerCase() const
 {
-	return *this;
+	String lower = *this;
+	for (int i = 0; lower.m_data[i] != '\0'; ++i)
+	{
+		lower.m_data[i] = tolower(lower.m_data[i]);
+	}
+	return lower;
 }
 String String::toUpperCase() const
 {
-	return *this;
+	String upper= *this;
+	for (int i = 0; upper.m_data[i] != '\0'; ++i)
+	{
+		upper.m_data[i] = toupper(upper.m_data[i]);
+	}
+	return upper;
 }
 
 String String::operator+(const String& str) const
