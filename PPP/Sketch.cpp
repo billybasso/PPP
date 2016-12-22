@@ -1,5 +1,6 @@
 #include "PPP.h"
 
+
 void setup()
 {
 	size(400, 400);
@@ -33,7 +34,4 @@ void draw()
 	}
 }
 
-String operator+(const char * a, const String & b)
-{
-	return String(a) + b;
-}
+

@@ -1,7 +1,5 @@
 #pragma once
 
-#pragma comment(lib, "d3d11")
-
 class String;
 struct Color;
 
@@ -11,10 +9,16 @@ void println(const char* text);
 void print(const String& text);
 void println(const String& text);
 
-
 //Random
 float random(float high);
 float random(float low, float high);
+
+//Constants
+const float HALF_PI    = 1.5707964f;
+const float PI         = 3.1415927f;
+const float QUARTER_PI = 0.7853982f;
+const float TAU        = 6.2831855f;
+const float TWO_PI     = 6.2831855f;
 
 void background(Color color);
 
@@ -27,6 +31,8 @@ void setup();
 void draw();
 
 //types
+
+// - Color ----------------------------------------------------
 
 struct Color
 {
@@ -55,6 +61,7 @@ struct Color
 	unsigned char r, g, b, a;
 };
 
+// - String ----------------------------------------------------
 
 class String
 {
@@ -89,6 +96,8 @@ public:
 	String operator+(const String& str) const;
 	bool operator==(const String& str) const;
 	const char* operator*() const;
+
+	friend String operator+(const char* a, const String& b);
 };
 
 String operator+(const char* a, const String& b);

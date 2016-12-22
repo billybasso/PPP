@@ -5,6 +5,8 @@
 
 #include <assert.h>
 
+#pragma comment(lib, "d3d11")
+
 static const int DEFAULT_WINDOW_WIDTH = 640;
 static const int DEFAULT_WINDOW_HEIGHT = 360;
 static const float DEFAULT_FRAME_RATE = 60;
@@ -91,7 +93,7 @@ int CALLBACK WinMain(
 	gWinAppState.hInstance = hInstance;
 
 	static TCHAR szWindowClass[] = TEXT("win32app");
-	static TCHAR szTitle[]       = TEXT("My Game");
+	static TCHAR szTitle[]       = TEXT("Sketch");
 
 	WNDCLASSEX wcex;
 	wcex.cbSize        = sizeof(WNDCLASSEX);
@@ -389,6 +391,13 @@ String::~String()
 	}
 }
 
+char String::charAt(int index) const
+{
+	assert(index >= 0);
+	assert(index < m_length);
+	return m_data[index];
+}
+
 int String::length() const
 {
 	return m_length;
@@ -467,6 +476,17 @@ bool String::operator==(const String& str) const
 	return true;
 }
 
+String operator+(const char* a, const String& b)
+{
+	String newString(String::NO_INIT);
+	int aLen = strlen(a);
+	newString.m_length = aLen + b.m_length;
+	newString.m_data = new char[newString.m_length + 1];
+	memcpy(newString.m_data, a, aLen);
+	memcpy(newString.m_data + aLen, b.m_data, b.m_length);
+	newString.m_data[newString.m_length] = '\0';
+	return newString;
+}
 
 // Processing functions -----------------------------------------------------------------------------------
 
