@@ -1,5 +1,7 @@
 #pragma once
 
+#pragma comment(lib, "d3d11")
+
 class String;
 struct Color;
 
