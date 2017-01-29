@@ -14,16 +14,27 @@ float random(float high);
 float random(float low, float high);
 
 //Constants
+const float QUARTER_PI = 0.7853982f;
 const float HALF_PI    = 1.5707964f;
 const float PI         = 3.1415927f;
-const float QUARTER_PI = 0.7853982f;
-const float TAU        = 6.2831855f;
 const float TWO_PI     = 6.2831855f;
+const float TAU        = 6.2831855f;
+
+//2D Primitives
+void triangle(float x1, float y1, float x2, float y2, float x3, float y3);
 
 void background(Color color);
 
 void size(int width, int height);
 void frameRate(float frameRate);
+
+//Time & Date
+int day();
+int hour();
+int millis();
+int month();
+int second();
+int year();
 
 
 //these methods must be implemented for the sketch to run
@@ -78,6 +89,7 @@ public:
 	String(const String& str, int offset, int length);
 	String(const String& str);
 	String(String&& str);
+	String(int i);
 	~String();
 
 	char charAt(int index) const;

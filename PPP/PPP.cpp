@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <d3d11.h>
 
+#include <stdlib.h>
 #include <assert.h>
 
 #pragma comment(lib, "d3d11")
@@ -23,6 +24,10 @@ struct WinApplicationState
 	int width     = DEFAULT_WINDOW_WIDTH;
 	int height    = DEFAULT_WINDOW_HEIGHT;
 	float frameRate = DEFAULT_FRAME_RATE;
+	__int64 programStartCount;
+	__int64 clockFrequency;
+	__int64 totalClockCount;
+
 };
 
 static WinApplicationState gWinAppState;
@@ -88,7 +93,6 @@ int CALLBACK WinMain(
 {
 
 	setup(); //call out to game code
-
 
 	gWinAppState.hInstance = hInstance;
 
@@ -246,8 +250,8 @@ int CALLBACK WinMain(
 		D3D11_VIEWPORT vp;
 		vp.TopLeftX = 0;
 		vp.TopLeftY = 0;
-		vp.Width    = gWinAppState.width;
-		vp.Height   = gWinAppState.height;
+		vp.Width    = (FLOAT)gWinAppState.width;
+		vp.Height   = (FLOAT)gWinAppState.height;
 		vp.MinDepth = 0.0f;
 		vp.MaxDepth = 0.0f;
 		d3dImmediateContext->RSSetViewports(1, &vp);
@@ -258,17 +262,16 @@ int CALLBACK WinMain(
 		gWinAppState.swapChain = mSwapChain;
 		gWinAppState.d3dInitialized = true;
 	}
-
 	
 
-	__int64 freq;
-	QueryPerformanceFrequency((LARGE_INTEGER*)&freq);
-	double period = 1.0 / freq;
+	QueryPerformanceFrequency((LARGE_INTEGER*)&gWinAppState.clockFrequency);
+	double period = 1.0 / gWinAppState.clockFrequency;
 
 	double dt = 0;
 	__int64 prevCount;
 	__int64 counts;
 	QueryPerformanceCounter((LARGE_INTEGER*)&prevCount);
+	gWinAppState.programStartCount = prevCount;
 	counts = prevCount;
 	static const float framePeriod = 1.0f / gWinAppState.frameRate;
 
@@ -285,6 +288,7 @@ int CALLBACK WinMain(
 		{
 			QueryPerformanceCounter((LARGE_INTEGER*)&counts);
 			dt += (counts - prevCount) * period;
+			gWinAppState.totalClockCount = counts;
 			prevCount = counts;
 
 			if (dt > framePeriod)
@@ -350,7 +354,7 @@ const Color Color::springGreen = Color(0, 255, 127);
 
 String::String(const char* data)
 {
-	m_length = strlen(data);
+	m_length = (int)strlen(data);
 	m_data = new char[m_length + 1];
 	memcpy(m_data, data, m_length + 1);
 }
@@ -381,6 +385,13 @@ String::String(String && str)
 
 	str.m_data = nullptr;
 	str.m_length = 0;
+}
+
+String::String(int i)
+{
+	m_data = new char[12];
+	itoa(i, m_data, 10);
+	m_length = strlen(m_data);
 }
 
 String::~String()
@@ -472,14 +483,16 @@ bool String::operator==(const String& str) const
 		{
 			return false;
 		}
+
 	}
+
 	return true;
 }
 
 String operator+(const char* a, const String& b)
 {
 	String newString(String::NO_INIT);
-	int aLen = strlen(a);
+	int aLen = (int)strlen(a);
 	newString.m_length = aLen + b.m_length;
 	newString.m_data = new char[newString.m_length + 1];
 	memcpy(newString.m_data, a, aLen);
@@ -517,6 +530,52 @@ void size(int width, int height)
 void frameRate(float frameRate)
 {
 	gWinAppState.frameRate = frameRate;
+}
+
+int day()
+{
+	SYSTEMTIME systemTime;
+	GetLocalTime(&systemTime);
+	return systemTime.wDay;
+}
+
+int hour()
+{
+	SYSTEMTIME systemTime;
+	GetLocalTime(&systemTime);
+	return systemTime.wHour;
+}
+
+int millis()
+{
+	return  (int)(1000.0f * (gWinAppState.totalClockCount - gWinAppState.programStartCount )/ (float)gWinAppState.clockFrequency);
+}
+
+int month()
+{
+	SYSTEMTIME systemTime;
+	GetLocalTime(&systemTime);
+	return systemTime.wMonth;
+}
+
+int second()
+{
+	SYSTEMTIME systemTime;
+	GetLocalTime(&systemTime);
+	return systemTime.wSecond;
+}
+
+int year()
+{
+	SYSTEMTIME systemTime;
+	GetLocalTime(&systemTime);
+	return systemTime.wYear;
+}
+
+void triangle(float x1, float y1, float x2, float y2, float x3, float y3)
+{
+	//println("drawing triangle...");
+	//todo actually draw triangle
 }
 
 void background(Color color)
