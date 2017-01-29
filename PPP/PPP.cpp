@@ -389,9 +389,10 @@ String::String(String && str)
 
 String::String(int i)
 {
-	m_data = new char[12];
-	itoa(i, m_data, 10);
-	m_length = strlen(m_data);
+	static const int MAX = 12;
+	m_data = new char[MAX];
+	_itoa_s(i, m_data, MAX, 10);
+	m_length = (int)strlen(m_data);
 }
 
 String::~String()
