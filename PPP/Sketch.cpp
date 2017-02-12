@@ -1,9 +1,11 @@
 #include "PPP.h"
 
+int frames = 0;
+
 void setup()
 {
 	size(400, 400);
-	frameRate(4);
+	frameRate(60);
 
 	String str = "Cool String";
 
@@ -18,22 +20,25 @@ void setup()
 	println("upper: " + upper);
 	String coolCoolString = cool + str;
 	println(coolCoolString);
-	println("year: " + String(year()));
-	println("month: " + String(month()));
-	println("day: " + String(day()));
+
+	String yearStr = year();
+	String monthStr = month();
+	String dayStr = day();
+	println("year: " + yearStr);
+	println("month: " + monthStr);
+	println("day: " + dayStr);
 }
 
 void draw()
 {
-	int randomNumber = (int)random(2);
-	if (randomNumber >= 1)
+	if (frames++ % 2 == 0)
 	{
-		background(Color::orange);
+		background(Color::red);
 		triangle(30, 75, 58, 20, 86, 75);
 	}
 	else
 	{
-		background(Color::azure);
+		background(Color::blue);
 	}
 }
 

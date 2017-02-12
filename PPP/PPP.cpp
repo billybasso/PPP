@@ -2,6 +2,11 @@
 
 #include <windows.h>
 #include <d3d11.h>
+#include <DirectXMath.h>
+#include <DirectXPackedVector.h>
+
+using namespace DirectX;
+using namespace DirectX::PackedVector;
 
 #include <stdlib.h>
 #include <assert.h>
@@ -20,6 +25,7 @@ struct WinApplicationState
 	ID3D11Device* d3dDevice;
 	ID3D11DeviceContext* d3dImmediateContext;
 	ID3D11RenderTargetView* renderTargetView;
+	ID3D11RasterizerState* rasterizerState;
 	IDXGISwapChain* swapChain;
 	int width     = DEFAULT_WINDOW_WIDTH;
 	int height    = DEFAULT_WINDOW_HEIGHT;
@@ -27,10 +33,9 @@ struct WinApplicationState
 	__int64 programStartCount;
 	__int64 clockFrequency;
 	__int64 totalClockCount;
-
 };
 
-static WinApplicationState gWinAppState;
+static WinApplicationState gState;
 
 
 void Update()
@@ -40,8 +45,10 @@ void Update()
 void Draw()
 {
 	draw(); //call out to game code
-		
-	gWinAppState.swapChain->Present(0, 0);
+	
+	gState.d3dImmediateContext->RSSetState(gState.rasterizerState);
+	gState.d3dImmediateContext->DrawIndexed(6, 0, 0);
+	gState.swapChain->Present(0, 0);
 
 }
 
@@ -94,7 +101,7 @@ int CALLBACK WinMain(
 
 	setup(); //call out to game code
 
-	gWinAppState.hInstance = hInstance;
+	gState.hInstance = hInstance;
 
 	static TCHAR szWindowClass[] = TEXT("win32app");
 	static TCHAR szTitle[]       = TEXT("Sketch");
@@ -129,7 +136,7 @@ int CALLBACK WinMain(
 		szTitle,
 		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT,
-		gWinAppState.width, gWinAppState.height,
+		gState.width, gState.height,
 		NULL,
 		NULL,
 		hInstance,
@@ -144,7 +151,7 @@ int CALLBACK WinMain(
 
 		return 1;
 	}
-	gWinAppState.hWindow = hWnd;
+	gState.hWindow = hWnd;
 
 	ShowWindow(hWnd, nShowCmd);
 	UpdateWindow(hWnd);
@@ -180,15 +187,17 @@ int CALLBACK WinMain(
 			return 1;
 		}
 
-		UINT m4xMsaaQuality;
-		d3dDevice->CheckMultisampleQualityLevels(
-			DXGI_FORMAT_R8G8B8A8_UNORM, 4, &m4xMsaaQuality);
-		assert(m4xMsaaQuality > 0);
-
+		{
+			UINT m4xMsaaQuality;
+			d3dDevice->CheckMultisampleQualityLevels(
+				DXGI_FORMAT_R8G8B8A8_UNORM, 4, &m4xMsaaQuality);
+			assert(m4xMsaaQuality > 0);
+		}
+		
 		//create swap chain
 		DXGI_SWAP_CHAIN_DESC sd;
-		sd.BufferDesc.Width                   = gWinAppState.width;
-		sd.BufferDesc.Height                  = gWinAppState.height;
+		sd.BufferDesc.Width                   = gState.width;
+		sd.BufferDesc.Height                  = gState.height;
 		sd.BufferDesc.RefreshRate.Numerator   = 60;
 		sd.BufferDesc.RefreshRate.Denominator = 1;
 		sd.BufferDesc.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -210,8 +219,8 @@ int CALLBACK WinMain(
 		IDXGIFactory* dxgiFactory = 0;
 		dxgiAdapter->GetParent(__uuidof(IDXGIFactory), (void**)&dxgiFactory);
 
-		IDXGISwapChain* mSwapChain;
-		dxgiFactory->CreateSwapChain(d3dDevice, &sd, &mSwapChain);
+		IDXGISwapChain* swapChain;
+		dxgiFactory->CreateSwapChain(d3dDevice, &sd, &swapChain);
 
 		dxgiDevice->Release();
 		dxgiAdapter->Release();
@@ -220,7 +229,7 @@ int CALLBACK WinMain(
 		//create the render target view
 		ID3D11RenderTargetView* mRenderTargetView;
 		ID3D11Texture2D* backBuffer;
-		mSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer));
+		swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer));
 		d3dDevice->CreateRenderTargetView(backBuffer, 0, &mRenderTargetView);
 		backBuffer->Release();
 
@@ -250,31 +259,115 @@ int CALLBACK WinMain(
 		D3D11_VIEWPORT vp;
 		vp.TopLeftX = 0;
 		vp.TopLeftY = 0;
-		vp.Width    = (FLOAT)gWinAppState.width;
-		vp.Height   = (FLOAT)gWinAppState.height;
+		vp.Width    = (FLOAT)gState.width;
+		vp.Height   = (FLOAT)gState.height;
 		vp.MinDepth = 0.0f;
 		vp.MaxDepth = 0.0f;
 		d3dImmediateContext->RSSetViewports(1, &vp);
 
-		gWinAppState.d3dDevice = d3dDevice;
-		gWinAppState.d3dImmediateContext = d3dImmediateContext;
-		gWinAppState.renderTargetView = mRenderTargetView;
-		gWinAppState.swapChain = mSwapChain;
-		gWinAppState.d3dInitialized = true;
+		gState.d3dDevice = d3dDevice;
+		gState.d3dImmediateContext = d3dImmediateContext;
+		gState.renderTargetView = mRenderTargetView;
+		gState.swapChain = swapChain;
+		gState.d3dInitialized = true;
+
+
+		struct Vertex_2DPosColor
+		{
+			XMFLOAT2 pos;
+			XMFLOAT4 color;
+		};
+
+		D3D11_INPUT_ELEMENT_DESC vertexDesc[] = 
+		{
+			{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 0, D3D11_INPUT_PER_VERTEX_DATA,  0},
+			{ "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, sizeof(XMFLOAT2) }
+		};
+
+		//ID3D11XEffect* FX;
+		//ID3D11EffectTechnique* tech;
+		ID3D11InputLayout* inputLayout;
+
+		//todo -- set shared params
+		gState.d3dDevice->CreateInputLayout(vertexDesc, ARRAYSIZE(vertexDesc), 0, 0, &inputLayout);
+
+		//create vert buffer
+
+		XMFLOAT4 yellow = { 1.0f, 1.0f, 0.0f, 1.0f };
+		XMFLOAT4 red    = { 1.0f, 0.0f, 0.0f, 1.0f };
+		XMFLOAT4 blue   = { 0.0f, 0.0f, 1.0f, 1.0f };
+		XMFLOAT4 green  = { 0.0f, 1.0f, 0.0f, 1.0f };
+
+		Vertex_2DPosColor verts[] =
+		{
+			{ XMFLOAT2(-1, -1), yellow },
+			{ XMFLOAT2(+1, -1), red },
+			{ XMFLOAT2(+1, +1), blue },
+			{ XMFLOAT2(-1, +1), green }
+		};
+
+		D3D11_BUFFER_DESC vertBufferDesc;
+		vertBufferDesc.Usage               = D3D11_USAGE_IMMUTABLE;
+		vertBufferDesc.ByteWidth           = sizeof(Vertex_2DPosColor) * 4;
+		vertBufferDesc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
+		vertBufferDesc.CPUAccessFlags      = 0;
+		vertBufferDesc.MiscFlags           = 0;
+		vertBufferDesc.StructureByteStride = 0;
+
+		D3D11_SUBRESOURCE_DATA vertInitData;
+		vertInitData.pSysMem = verts;
+
+		ID3D11Buffer* vertBuffer;
+		gState.d3dDevice->CreateBuffer(&vertBufferDesc, &vertInitData, &vertBuffer);
+
+		UINT stride = sizeof(Vertex_2DPosColor);
+		UINT offset = 0;
+		gState.d3dImmediateContext->IASetVertexBuffers(0, 1, &vertBuffer, &stride, &offset);
+
+
+		//Create index buffer
+		UINT indices[6] = {
+			0, 1, 2,
+			0, 2, 3
+		};
+
+		D3D11_BUFFER_DESC indexBufferDesc;
+		indexBufferDesc.Usage               = D3D11_USAGE_IMMUTABLE;
+		indexBufferDesc.ByteWidth           = sizeof(UINT) * 6;
+		indexBufferDesc.BindFlags           = D3D11_BIND_INDEX_BUFFER;
+		indexBufferDesc.CPUAccessFlags      = 0;
+		indexBufferDesc.MiscFlags           = 0;
+		indexBufferDesc.StructureByteStride = 0;
+
+		D3D11_SUBRESOURCE_DATA indexInitData;
+		indexInitData.pSysMem = indices;
+
+		ID3D11Buffer* indexBuffer;
+		gState.d3dDevice->CreateBuffer(&indexBufferDesc, &indexInitData, &indexBuffer);
+
+		gState.d3dImmediateContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+
+		D3D11_RASTERIZER_DESC rasterizerDesc;
+		ZeroMemory(&rasterizerDesc, sizeof(D3D11_RASTERIZER_DESC));
+		rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+		rasterizerDesc.CullMode = D3D11_CULL_NONE; //todo -- this could maybe be changed
+		rasterizerDesc.FrontCounterClockwise = false;
+		rasterizerDesc.DepthClipEnable = false; //the book set this to true
+		gState.d3dDevice->CreateRasterizerState(&rasterizerDesc, &gState.rasterizerState);
+
 	}
 	
 
-	QueryPerformanceFrequency((LARGE_INTEGER*)&gWinAppState.clockFrequency);
-	double period = 1.0 / gWinAppState.clockFrequency;
+	QueryPerformanceFrequency((LARGE_INTEGER*)&gState.clockFrequency);
+	double period = 1.0 / gState.clockFrequency;
 
-	double dt = 0;
 	__int64 prevCount;
-	__int64 counts;
 	QueryPerformanceCounter((LARGE_INTEGER*)&prevCount);
-	gWinAppState.programStartCount = prevCount;
-	counts = prevCount;
-	static const float framePeriod = 1.0f / gWinAppState.frameRate;
-
+	gState.programStartCount = prevCount;
+	__int64 counts = prevCount;
+	const float framePeriod = 1.0f / gState.frameRate;
+	double dt = 0;
 
 	MSG msg{};
 	while (msg.message != WM_QUIT)
@@ -287,18 +380,17 @@ int CALLBACK WinMain(
 		else
 		{
 			QueryPerformanceCounter((LARGE_INTEGER*)&counts);
-			dt += (counts - prevCount) * period;
-			gWinAppState.totalClockCount = counts;
-			prevCount = counts;
+			gState.totalClockCount = counts;
 
+			dt += (counts - prevCount) * period;
 			if (dt > framePeriod)
 			{
 				Update();
 				Draw();
 				dt = 0;
 			}
+			prevCount = counts;
 		}
-
 	}
 
 	return (int)msg.wParam;
@@ -306,7 +398,7 @@ int CALLBACK WinMain(
 
 
 
-//Color -----------------------------------------------------------------------------------
+//Color --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Color::Color()
 	: r(0), b(0), g(0), a(255) {}
 
@@ -350,7 +442,7 @@ const Color Color::rose = Color(255, 0, 127);
 const Color Color::chartreuse = Color(127, 255, 0);
 const Color Color::springGreen = Color(0, 255, 127);
 
-//string ---------------------------------------------------------------------------------------------
+//string -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 String::String(const char* data)
 {
@@ -502,7 +594,7 @@ String operator+(const char* a, const String& b)
 	return newString;
 }
 
-// Processing functions -----------------------------------------------------------------------------------
+// Processing functions ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 void print(const char* text)
 {
@@ -522,15 +614,15 @@ void println(const String& text)
 
 void size(int width, int height)
 {
-	gWinAppState.width = width;
-	gWinAppState.height = height;
+	gState.width = width;
+	gState.height = height;
 
 	//todo recreate render target
 }
 
 void frameRate(float frameRate)
 {
-	gWinAppState.frameRate = frameRate;
+	gState.frameRate = frameRate;
 }
 
 int day()
@@ -549,7 +641,7 @@ int hour()
 
 int millis()
 {
-	return  (int)(1000.0f * (gWinAppState.totalClockCount - gWinAppState.programStartCount )/ (float)gWinAppState.clockFrequency);
+	return  (int)(1000.0f * (gState.totalClockCount - gState.programStartCount )/ (float)gState.clockFrequency);
 }
 
 int month()
@@ -582,7 +674,7 @@ void triangle(float x1, float y1, float x2, float y2, float x3, float y3)
 void background(Color color)
 {
 	FLOAT clearColor[4] = { color.r/255.0f, color.g/255.0f, color.b/255.0f, color.a/255.0f};
-	gWinAppState.d3dImmediateContext->ClearRenderTargetView(gWinAppState.renderTargetView, clearColor);
+	gState.d3dImmediateContext->ClearRenderTargetView(gState.renderTargetView, clearColor);
 }
 
 float random(float high)

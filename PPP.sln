@@ -5,6 +5,11 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PPP", "PPP\PPP.vcxproj", "{38EE92FC-32A3-4A82-A581-18A4CEC00B5B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{96F2F999-3B47-406A-BF03-924184CD5B4B}"
+	ProjectSection(SolutionItems) = preProject
+		Shader_Basic2D.hlsl = Shader_Basic2D.hlsl
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
