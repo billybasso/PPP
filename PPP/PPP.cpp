@@ -50,6 +50,8 @@ void Draw()
 	gState.d3dImmediateContext->DrawIndexed(6, 0, 0);
 	gState.swapChain->Present(0, 0);
 
+	gState.d3dImmediateContext->RSSetState(0); //restore the default state.
+
 }
 
 void OnMouseDown(WPARAM p, int x, int y)
@@ -193,24 +195,24 @@ int CALLBACK WinMain(
 				DXGI_FORMAT_R8G8B8A8_UNORM, 4, &m4xMsaaQuality);
 			assert(m4xMsaaQuality > 0);
 		}
-		
+
 		//create swap chain
 		DXGI_SWAP_CHAIN_DESC sd;
-		sd.BufferDesc.Width                   = gState.width;
-		sd.BufferDesc.Height                  = gState.height;
-		sd.BufferDesc.RefreshRate.Numerator   = 60;
+		sd.BufferDesc.Width = gState.width;
+		sd.BufferDesc.Height = gState.height;
+		sd.BufferDesc.RefreshRate.Numerator = 60;
 		sd.BufferDesc.RefreshRate.Denominator = 1;
-		sd.BufferDesc.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM;
-		sd.BufferDesc.ScanlineOrdering        = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-		sd.BufferDesc.Scaling                 = DXGI_MODE_SCALING_UNSPECIFIED;
-		sd.SampleDesc.Count                   = 1; //don't use msaa
-		sd.SampleDesc.Quality                 = 0;
-		sd.BufferUsage                        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		sd.BufferCount                        = 1;
-		sd.OutputWindow                       = hWnd;
-		sd.Windowed                           = true;
-		sd.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
-		sd.Flags                              = 0;
+		sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+		sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+		sd.SampleDesc.Count = 1; //don't use msaa
+		sd.SampleDesc.Quality = 0;
+		sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		sd.BufferCount = 1;
+		sd.OutputWindow = hWnd;
+		sd.Windowed = true;
+		sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+		sd.Flags = 0;
 
 		IDXGIDevice* dxgiDevice = 0;
 		d3dDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgiDevice);
@@ -259,8 +261,8 @@ int CALLBACK WinMain(
 		D3D11_VIEWPORT vp;
 		vp.TopLeftX = 0;
 		vp.TopLeftY = 0;
-		vp.Width    = (FLOAT)gState.width;
-		vp.Height   = (FLOAT)gState.height;
+		vp.Width = (FLOAT)gState.width;
+		vp.Height = (FLOAT)gState.height;
 		vp.MinDepth = 0.0f;
 		vp.MaxDepth = 0.0f;
 		d3dImmediateContext->RSSetViewports(1, &vp);
@@ -278,21 +280,98 @@ int CALLBACK WinMain(
 			XMFLOAT4 color;
 		};
 
-		D3D11_INPUT_ELEMENT_DESC vertexDesc[] = 
-		{
-			{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 0, D3D11_INPUT_PER_VERTEX_DATA,  0},
-			{ "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, sizeof(XMFLOAT2) }
-		};
+		
 
 		//ID3D11XEffect* FX;
 		//ID3D11EffectTechnique* tech;
-		ID3D11InputLayout* inputLayout;
+
+		TCHAR workingDirBuff[4096];
+		GetCurrentDirectory(4096, workingDirBuff);
 
 		//todo -- set shared params
-		gState.d3dDevice->CreateInputLayout(vertexDesc, ARRAYSIZE(vertexDesc), 0, 0, &inputLayout);
+#if _DEBUG
+		TCHAR vertexShaderPath[] = TEXT("../x64/Debug/VertexShader_Basic2D.cso");
+		TCHAR pixelShaderPath[] = TEXT("../x64/Debug/PixelShader_Basic2D.cso");
+#else
+		TCHAR vertexShaderPath[] = TEXT("../x64/Release/VertexShader_Basic2D.cso");
+		TCHAR pixelShaderPath[]  = TEXT("../x64/Release/PixelShader_Basic2D.cso");
+#endif
+
+		D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
+		{
+			{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+		};
+
+		ID3D11VertexShader* vertexShader;
+		ID3D11InputLayout* inputLayout;
+		{
+			static const int MAX_FILE_SIZE = 1024 * 32;
+			BYTE buffer[MAX_FILE_SIZE];
+
+			HANDLE fileHandle = CreateFile(vertexShaderPath,
+				GENERIC_READ,
+				FILE_SHARE_READ,
+				NULL,
+				OPEN_EXISTING,
+				FILE_ATTRIBUTE_NORMAL,
+				NULL);
+			if (fileHandle == INVALID_HANDLE_VALUE)
+			{
+				__debugbreak();
+			}
+			DWORD bytesRead = 0;
+			BOOL readResult = ReadFile(fileHandle, buffer, MAX_FILE_SIZE, &bytesRead, NULL);
+			if (readResult == false)
+			{
+				__debugbreak();
+			}
+			CloseHandle(fileHandle);
+
+			gState.d3dDevice->CreateVertexShader( buffer, bytesRead, nullptr, &vertexShader );
+
+			gState.d3dDevice->CreateInputLayout(
+				vertexDesc,
+				ARRAYSIZE(vertexDesc),
+				buffer,
+				bytesRead,
+				&inputLayout
+			);
+		}
+
+		ID3D11PixelShader* pixelShader;
+		{
+			static const int MAX_FILE_SIZE = 1024 * 32;
+			BYTE buffer[MAX_FILE_SIZE];
+			HANDLE fileHandle = CreateFile(pixelShaderPath,
+				GENERIC_READ,
+				FILE_SHARE_READ,
+				NULL,
+				OPEN_EXISTING,
+				FILE_ATTRIBUTE_NORMAL,
+				NULL);
+			if (fileHandle == INVALID_HANDLE_VALUE)
+			{
+				__debugbreak();
+			}
+			DWORD bytesRead = 0;
+			BOOL readResult = ReadFile(fileHandle, buffer, MAX_FILE_SIZE, &bytesRead, NULL);
+			if (readResult == false)
+			{
+				__debugbreak();
+			}
+			CloseHandle(fileHandle);
+			gState.d3dDevice->CreatePixelShader(buffer, bytesRead, nullptr, &pixelShader);
+		}
+
+		gState.d3dImmediateContext->IASetInputLayout(inputLayout);
+
+		gState.d3dImmediateContext->VSSetShader(vertexShader, nullptr, 0);
+		gState.d3dImmediateContext->PSSetShader(pixelShader, nullptr, 0);
+
+		gState.d3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		//create vert buffer
-
 		XMFLOAT4 yellow = { 1.0f, 1.0f, 0.0f, 1.0f };
 		XMFLOAT4 red    = { 1.0f, 0.0f, 0.0f, 1.0f };
 		XMFLOAT4 blue   = { 0.0f, 0.0f, 1.0f, 1.0f };
