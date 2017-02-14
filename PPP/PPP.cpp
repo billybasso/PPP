@@ -5,6 +5,9 @@
 #include <DirectXMath.h>
 #include <DirectXPackedVector.h>
 
+#include <vector>
+
+using namespace std;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
 
@@ -13,9 +16,15 @@ using namespace DirectX::PackedVector;
 
 #pragma comment(lib, "d3d11")
 
-static const int DEFAULT_WINDOW_WIDTH = 640;
-static const int DEFAULT_WINDOW_HEIGHT = 360;
+static const int DEFAULT_WINDOW_WIDTH = 1280;
+static const int DEFAULT_WINDOW_HEIGHT = 720;
 static const float DEFAULT_FRAME_RATE = 60;
+
+struct Vertex_2DPosColor
+{
+	XMFLOAT2 pos;
+	XMFLOAT4 color;
+};
 
 struct WinApplicationState
 {
@@ -33,6 +42,11 @@ struct WinApplicationState
 	__int64 programStartCount;
 	__int64 clockFrequency;
 	__int64 totalClockCount;
+
+	XMFLOAT4 fillColor = {1.0f, 1.0f, 1.0f, 1.0f};
+
+	ID3D11Buffer* vertBuffer;
+	vector<Vertex_2DPosColor> verts;
 };
 
 static WinApplicationState gState;
@@ -44,10 +58,20 @@ void Update()
 
 void Draw()
 {
+	gState.verts.clear();
 	draw(); //call out to game code
+
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	ZeroMemory(&mappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
 	
+	gState.d3dImmediateContext->Map(gState.vertBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	size_t byteSize = sizeof(gState.verts[0])* gState.verts.size();
+	size_t vertSize = sizeof(Vertex_2DPosColor);
+	memcpy(mappedResource.pData, gState.verts.data(), byteSize);
+	gState.d3dImmediateContext->Unmap(gState.vertBuffer, 0);
+
 	gState.d3dImmediateContext->RSSetState(gState.rasterizerState);
-	gState.d3dImmediateContext->DrawIndexed(6, 0, 0);
+	gState.d3dImmediateContext->Draw((UINT)gState.verts.size(), 0);
 	gState.swapChain->Present(0, 0);
 
 	gState.d3dImmediateContext->RSSetState(0); //restore the default state.
@@ -101,6 +125,7 @@ int CALLBACK WinMain(
 	int nShowCmd)
 {
 
+	gState = WinApplicationState();
 	setup(); //call out to game code
 
 	gState.hInstance = hInstance;
@@ -273,18 +298,6 @@ int CALLBACK WinMain(
 		gState.swapChain = swapChain;
 		gState.d3dInitialized = true;
 
-
-		struct Vertex_2DPosColor
-		{
-			XMFLOAT2 pos;
-			XMFLOAT4 color;
-		};
-
-		
-
-		//ID3D11XEffect* FX;
-		//ID3D11EffectTechnique* tech;
-
 		TCHAR workingDirBuff[4096];
 		GetCurrentDirectory(4096, workingDirBuff);
 
@@ -365,45 +378,29 @@ int CALLBACK WinMain(
 		}
 
 		gState.d3dImmediateContext->IASetInputLayout(inputLayout);
-
 		gState.d3dImmediateContext->VSSetShader(vertexShader, nullptr, 0);
 		gState.d3dImmediateContext->PSSetShader(pixelShader, nullptr, 0);
-
 		gState.d3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		//create vert buffer
-		XMFLOAT4 yellow = { 1.0f, 1.0f, 0.0f, 1.0f };
-		XMFLOAT4 red    = { 1.0f, 0.0f, 0.0f, 1.0f };
-		XMFLOAT4 blue   = { 0.0f, 0.0f, 1.0f, 1.0f };
-		XMFLOAT4 green  = { 0.0f, 1.0f, 0.0f, 1.0f };
-
-		Vertex_2DPosColor verts[] =
-		{
-			{ XMFLOAT2(-1, -1), yellow },
-			{ XMFLOAT2(+1, -1), red },
-			{ XMFLOAT2(+1, +1), blue },
-			{ XMFLOAT2(-1, +1), green }
-		};
-
 		D3D11_BUFFER_DESC vertBufferDesc;
-		vertBufferDesc.Usage               = D3D11_USAGE_IMMUTABLE;
-		vertBufferDesc.ByteWidth           = sizeof(Vertex_2DPosColor) * 4;
+		vertBufferDesc.Usage               = D3D11_USAGE_DYNAMIC;
+		vertBufferDesc.ByteWidth           = sizeof(Vertex_2DPosColor)* 600;
 		vertBufferDesc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
-		vertBufferDesc.CPUAccessFlags      = 0;
+		vertBufferDesc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
 		vertBufferDesc.MiscFlags           = 0;
 		vertBufferDesc.StructureByteStride = 0;
 
 		D3D11_SUBRESOURCE_DATA vertInitData;
-		vertInitData.pSysMem = verts;
+		gState.verts.reserve(1000);
+		vertInitData.pSysMem = gState.verts.data();
 
-		ID3D11Buffer* vertBuffer;
-		gState.d3dDevice->CreateBuffer(&vertBufferDesc, &vertInitData, &vertBuffer);
+		gState.d3dDevice->CreateBuffer(&vertBufferDesc, &vertInitData, &gState.vertBuffer);
 
 		UINT stride = sizeof(Vertex_2DPosColor);
 		UINT offset = 0;
-		gState.d3dImmediateContext->IASetVertexBuffers(0, 1, &vertBuffer, &stride, &offset);
+		gState.d3dImmediateContext->IASetVertexBuffers(0, 1, &gState.vertBuffer, &stride, &offset);
 
-
+		/*
 		//Create index buffer
 		UINT indices[6] = {
 			0, 1, 2,
@@ -425,6 +422,7 @@ int CALLBACK WinMain(
 		gState.d3dDevice->CreateBuffer(&indexBufferDesc, &indexInitData, &indexBuffer);
 
 		gState.d3dImmediateContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+		*/
 
 
 		D3D11_RASTERIZER_DESC rasterizerDesc;
@@ -433,6 +431,8 @@ int CALLBACK WinMain(
 		rasterizerDesc.CullMode = D3D11_CULL_NONE; //todo -- this could maybe be changed
 		rasterizerDesc.FrontCounterClockwise = false;
 		rasterizerDesc.DepthClipEnable = false; //the book set this to true
+		rasterizerDesc.MultisampleEnable = false;
+		rasterizerDesc.AntialiasedLineEnable = false;
 		gState.d3dDevice->CreateRasterizerState(&rasterizerDesc, &gState.rasterizerState);
 
 	}
@@ -529,7 +529,6 @@ String::String(const char* data)
 	m_data = new char[m_length + 1];
 	memcpy(m_data, data, m_length + 1);
 }
-
 String::String(const String& str, int offset, int length)
 {
 	m_length = length;
@@ -537,7 +536,6 @@ String::String(const String& str, int offset, int length)
 	memcpy(m_data, str.m_data + offset, length);
 	m_data[m_length] = '\0';
 }
-
 String::String(const String & str)
 {
 	m_length = str.m_length;
@@ -548,7 +546,6 @@ String::String(const String & str)
 	}
 	
 }
-
 String::String(String && str)
 {
 	m_data   = str.m_data;
@@ -557,7 +554,6 @@ String::String(String && str)
 	str.m_data = nullptr;
 	str.m_length = 0;
 }
-
 String::String(int i)
 {
 	static const int MAX = 12;
@@ -565,7 +561,6 @@ String::String(int i)
 	_itoa_s(i, m_data, MAX, 10);
 	m_length = (int)strlen(m_data);
 }
-
 String::~String()
 {
 	if (m_data)
@@ -573,24 +568,20 @@ String::~String()
 		delete[] m_data;
 	}
 }
-
 char String::charAt(int index) const
 {
 	assert(index >= 0);
 	assert(index < m_length);
 	return m_data[index];
 }
-
 int String::length() const
 {
 	return m_length;
 }
-
 const char* String::operator*() const
 {
 	return m_data;
 }
-
 String String::subString(int beginIndex) const
 {
 	String newString(m_data + beginIndex);
@@ -612,7 +603,6 @@ String String::subString(int beginIndex, int endIndex) const
 	}
 	return newString;
 }
-
 String String::toLowerCase() const
 {
 	String lower = *this;
@@ -631,7 +621,6 @@ String String::toUpperCase() const
 	}
 	return upper;
 }
-
 String String::operator+(const String& str) const
 {
 	String newString(NO_INIT);
@@ -660,7 +649,6 @@ bool String::operator==(const String& str) const
 
 	return true;
 }
-
 String operator+(const char* a, const String& b)
 {
 	String newString(String::NO_INIT);
@@ -744,10 +732,31 @@ int year()
 	return systemTime.wYear;
 }
 
+void fill(Color c)
+{
+	gState.fillColor.x = c.r/255.0f;
+	gState.fillColor.y = c.g/255.0f;
+	gState.fillColor.z = c.b/255.0f;
+	gState.fillColor.w = c.a/255.0f;
+}
+
 void triangle(float x1, float y1, float x2, float y2, float x3, float y3)
 {
-	//println("drawing triangle...");
-	//todo actually draw triangle
+	Vertex_2DPosColor v0;
+	Vertex_2DPosColor v1;
+	Vertex_2DPosColor v2;
+	v0.pos.x = x1;
+	v0.pos.y = y1;
+	v1.pos.x = x2;
+	v1.pos.y = y2;
+	v2.pos.x = x3;
+	v2.pos.y = y3;
+	v0.color = gState.fillColor;
+	v1.color = gState.fillColor;
+	v2.color = gState.fillColor;
+	gState.verts.push_back(v0);
+	gState.verts.push_back(v1);
+	gState.verts.push_back(v2);
 }
 
 void background(Color color)

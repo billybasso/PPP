@@ -4,7 +4,7 @@ int frames = 0;
 
 void setup()
 {
-	size(400, 400);
+	size(3200, 1800);
 	frameRate(60);
 
 	String str = "Cool String";
@@ -31,15 +31,12 @@ void setup()
 
 void draw()
 {
-	if (frames++ % 2 == 0)
-	{
-		background(Color::red);
-		triangle(30, 75, 58, 20, 86, 75);
-	}
-	else
-	{
-		background(Color::blue);
-	}
+	//background(Color::black);
+	float x = random(-1, 1);
+	float y = random(-1, 1);
+	fill(Color(x * 256, y * 256, 255 - 255 * x));
+	triangle(x + .3f, y + 0, x -.3f, y + 0, x + 0, y + .3f);
+	
 }
 
 

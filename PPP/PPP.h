@@ -36,6 +36,10 @@ int month();
 int second();
 int year();
 
+//Color
+//Setting
+void fill(Color c);
+
 
 //these methods must be implemented for the sketch to run
 void setup();
