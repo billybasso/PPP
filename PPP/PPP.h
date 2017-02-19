@@ -11,6 +11,12 @@ enum RectMode
 	CENTER,
 };
 
+// Constants
+const float QUARTER_PI = 0.7853982f;
+const float HALF_PI = 1.5707964f;
+const float PI = 3.1415927f;
+const float TWO_PI = 6.2831855f;
+const float TAU = 6.2831855f;
 
 //Processing API ------------------------------------------------------------
 class PApplet
@@ -23,17 +29,11 @@ public:
 	static void print(const String& text);
 	static void println(const String& text);
 
-	//Constants
-	const float QUARTER_PI = 0.7853982f;
-	const float HALF_PI = 1.5707964f;
-	const float PI = 3.1415927f;
-	const float TWO_PI = 6.2831855f;
-	const float TAU = 6.2831855f;
-
 	//2D Primitives
 	static void triangle(float x1, float y1, float x2, float y2, float x3, float y3);
 	static void quad(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4);
 	static void rect(float a, float b, float c, float d);
+	static void rect(float a, float b, float c, float d, float r);
 	//Attributes
 	void rectMode(RectMode mode);
 

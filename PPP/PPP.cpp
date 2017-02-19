@@ -42,11 +42,13 @@ struct WinApplicationState
 	__int64 clockFrequency;
 	__int64 totalClockCount;
 
-	Color fillColor = {255, 255, 255, 255};
-	RectMode rectMode = CORNER;
-
 	ID3D11Buffer* vertBuffer;
 	vector<Vertex_2DPosColor> verts;
+
+	//processing state
+	Color fillColor = { 255, 255, 255, 255 };
+	RectMode rectMode = CORNER;
+
 };
 
 static WinApplicationState gState;
@@ -787,6 +789,78 @@ void PApplet::rect(float a, float b, float c, float d)
 	case CENTER:
 		quad(a - c/2, b - d/2, a + c/2, b - d/2, a + c/2, b + d/2, a - c/2, b + d/2);
 		break;
+	}
+}
+
+void PApplet::rect(float a, float b, float c, float d, float r)
+{
+	float x1, y1, x2, y2, x3, y3, x4, y4;
+	switch (gState.rectMode)
+	{
+	case CORNER:
+		x1 = a + r;
+		y1 = b + r;
+		x2 = a + c - r;
+		y2 = b + r;
+		x3 = a + c - r;
+		y3 = b + d - r;
+		x4 = a + r;
+		y4 = b + d - r;
+		break;
+	case CORNERS:
+		x1 = a + r;
+		y1 = b + r;
+		x2 = c - r;
+		y2 = b + r;
+		x3 = c - r;
+		y3 = d - r;
+		x4 = a + r;
+		y4 = d - r;
+		break;
+	case RADIUS:
+		x1 = a - c + r;
+		y1 = b - d + r;
+		x2 = a + c - r;
+		y2 = b - d + r;
+		x3 = a + c - r;
+		y3 = b + d - r;
+		x4 = a - c + r;
+		y4 = b + d - r;
+		break;
+	case CENTER:
+		x1 = a - (c / 2) + r;
+		y1 = b - (d / 2) + r;
+		x2 = a + (c / 2) - r;
+		y2 = b - (d / 2) + r;
+		x3 = a + (c / 2) - r;
+		y3 = b + (d / 2) - r;
+		x4 = a - (c / 2) + r;
+		y4 = b + (d / 2) - r;
+		break;
+	}
+
+	//draw the inner portion and sides
+	quad(x1 - r, y1, x2 + r, y2, x3 + r, y3, x4 - r, y4);
+	//draw the top side
+	quad(x1, y1-r, x2, y2-r, x3, y2, x4, y1);
+	//draw the bottom side
+	quad(x1, y4, x2, y3, x3, y3+r, x4, y4+r);
+	int CORNER_RES = 10;
+	//draw upper left corner
+	for (int i = 0; i < CORNER_RES; ++i)
+	{
+		float cosVal0 = cos((i       / (float)CORNER_RES) * HALF_PI) * r;
+		float sinVal0 = sin((i       / (float)CORNER_RES) * HALF_PI) * r;
+		float cosVal1 = cos(((i + 1) / (float)CORNER_RES) * HALF_PI) * r;
+		float sinVal1 = sin(((i + 1) / (float)CORNER_RES) * HALF_PI) * r;
+		//draw upper left corner
+		triangle( x1, y1, x1 - cosVal0, y1 - sinVal0, x1 - cosVal1, y1 - sinVal1);
+		//draw upper right corner
+		triangle(x2, y2, x2 + cosVal0, y2 - sinVal0, x2 + cosVal1, y2 - sinVal1);
+		//draw lower right corner
+		triangle(x3, y3, x3 + cosVal0, y3 + sinVal0, x3 + cosVal1, y3 + sinVal1);
+		//draw lower left corner
+		triangle(x4, y4, x4 - cosVal0, y4 + sinVal0, x4 - cosVal1, y4 + sinVal1);
 	}
 }
 

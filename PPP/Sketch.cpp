@@ -33,11 +33,11 @@ class TestSketch : public PApplet
 		//{
 		//	drawTriangle(frames / (float)(i + 1), i);
 		//}
-		int w = width();
-		int h = height();
-		rectMode(CORNERS);
+		int w = width() - 100;
+		int h = height() - 100;
+		rectMode(CENTER);
 		fill(Color::azure);
-		rect(w*0.25f, h*0.25f, w*0.75f, h*0.75f);
+		rect(width()/2.0f,height()/2, w, h,100);
 		++frames;
 
 	}
