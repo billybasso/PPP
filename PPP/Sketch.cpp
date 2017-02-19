@@ -28,12 +28,16 @@ class TestSketch : public PApplet
 
 	void draw()
 	{
-		background(Color::white);
-		for (int i = 255; i >= 0; --i)
-		{
-			drawTriangle(frames / (float)(i + 1), i);
-		}
-
+		//background(Color::white);
+		//for (int i = 255; i >= 0; --i)
+		//{
+		//	drawTriangle(frames / (float)(i + 1), i);
+		//}
+		int w = width();
+		int h = height();
+		rectMode(CORNERS);
+		fill(Color::azure);
+		rect(w*0.25f, h*0.25f, w*0.75f, h*0.75f);
 		++frames;
 
 	}

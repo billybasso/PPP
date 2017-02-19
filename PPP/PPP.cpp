@@ -43,6 +43,7 @@ struct WinApplicationState
 	__int64 totalClockCount;
 
 	Color fillColor = {255, 255, 255, 255};
+	RectMode rectMode = CORNER;
 
 	ID3D11Buffer* vertBuffer;
 	vector<Vertex_2DPosColor> verts;
@@ -762,6 +763,36 @@ void PApplet::triangle(float x1, float y1, float x2, float y2, float x3, float y
 	gState.verts.push_back(v0);
 	gState.verts.push_back(v1);
 	gState.verts.push_back(v2);
+}
+
+void PApplet::quad(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4)
+{
+	triangle(x1, y1, x2, y2, x3, y3);
+	triangle(x3, y3, x4, y4, x1, y1);
+}
+
+void PApplet::rect(float a, float b, float c, float d)
+{
+	switch (gState.rectMode)
+	{
+	case CORNER:
+		quad(a, b, a + c, b, a + c, b + d, a, b + d);
+		break;
+	case CORNERS:
+		quad(a, b, c, b, c, d, a, d);
+		break;
+	case RADIUS:
+		quad(a - c, b - d, a + c, b - d, a + c, b + d, a - c, b + d);
+		break;
+	case CENTER:
+		quad(a - c/2, b - d/2, a + c/2, b - d/2, a + c/2, b + d/2, a - c/2, b + d/2);
+		break;
+	}
+}
+
+void PApplet::rectMode(RectMode mode)
+{
+	gState.rectMode = mode;
 }
 
 void PApplet::background(Color color)
