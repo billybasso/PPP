@@ -1,42 +1,53 @@
 #include "PPP.h"
 
 int frames = 0;
+Color bgColor;
 
-void setup()
+class TestSketch : public PApplet
 {
-	size(3200, 1800);
-	frameRate(60);
+	void setup()
+	{
+		size(700, 700);
+		frameRate(60);
+	}
 
-	String str = "Cool String";
+	void drawTriangle(float frames, int i)
+	{
+		fill((i *4)%255);
 
-	String cool = String(str, 0, 4);
+		float speed = 0.01f;
 
-	println(str);
-	println(cool);
+		float x1 = width()  * 0.5f;
+		float y1 = height() * 0.5f;
+		float x2 = width()  * (1 + cos(0.1f + frames * TAU * speed)) * 0.5f;
+		float y2 = height() * (1 + sin(0.1f + frames * TAU * speed)) * 0.5f;
+		float x3 = width()  * (1 + cos(0.2f + frames * TAU * speed)) * 0.5f;
+		float y3 = height() * (1 + sin(0.2f + frames * TAU * speed)) * 0.5f;
+		triangle(x1, y1, x2, y2, x3, y3);
+	}
 
-	String mixed = "HeY ThEre!";
-	String lower = mixed.toLowerCase();
-	String upper = lower.toUpperCase();
-	println("upper: " + upper);
-	String coolCoolString = cool + str;
-	println(coolCoolString);
+	void draw()
+	{
+		background(Color::white);
+		for (int i = 255; i >= 0; --i)
+		{
+			drawTriangle(frames / (float)(i + 1), i);
+		}
 
-	String yearStr = year();
-	String monthStr = month();
-	String dayStr = day();
-	println("year: " + yearStr);
-	println("month: " + monthStr);
-	println("day: " + dayStr);
-}
+		++frames;
 
-void draw()
-{
-	//background(Color::black);
-	float x = random(-1, 1);
-	float y = random(-1, 1);
-	fill(Color(x * 256, y * 256, 255 - 255 * x));
-	triangle(x + .3f, y + 0, x -.3f, y + 0, x + 0, y + .3f);
-	
-}
+	}
 
+	void mousePressed() override
+	{
+		bgColor = Color(random(256), random(256), random(256));
+	}
 
+	void mouseReleased() override
+	{
+		bgColor = Color(random(256), random(256), random(256));
+	}
+
+};
+
+SET_SKETCH_CLASS(TestSketch)

@@ -16,21 +16,20 @@ using namespace DirectX::PackedVector;
 
 #pragma comment(lib, "d3d11")
 
-static const int DEFAULT_WINDOW_WIDTH = 1280;
-static const int DEFAULT_WINDOW_HEIGHT = 720;
-static const float DEFAULT_FRAME_RATE = 60;
+static const int DEFAULT_WINDOW_WIDTH  = 640;
+static const int DEFAULT_WINDOW_HEIGHT = 360;
+static const float DEFAULT_FRAME_RATE  = 60;
 
 struct Vertex_2DPosColor
 {
 	XMFLOAT2 pos;
-	XMFLOAT4 color;
+	Color color;
 };
 
 struct WinApplicationState
 {
 	HINSTANCE hInstance;
-	HWND hWindow;
-	bool d3dInitialized = false;
+	HWND hWindow; //window handle
 	ID3D11Device* d3dDevice;
 	ID3D11DeviceContext* d3dImmediateContext;
 	ID3D11RenderTargetView* renderTargetView;
@@ -43,7 +42,7 @@ struct WinApplicationState
 	__int64 clockFrequency;
 	__int64 totalClockCount;
 
-	XMFLOAT4 fillColor = {1.0f, 1.0f, 1.0f, 1.0f};
+	Color fillColor = {255, 255, 255, 255};
 
 	ID3D11Buffer* vertBuffer;
 	vector<Vertex_2DPosColor> verts;
@@ -59,7 +58,7 @@ void Update()
 void Draw()
 {
 	gState.verts.clear();
-	draw(); //call out to game code
+	getCurrentApp().draw(); //call out to game code
 
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	ZeroMemory(&mappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
@@ -78,16 +77,6 @@ void Draw()
 
 }
 
-void OnMouseDown(WPARAM p, int x, int y)
-{
-	OutputDebugString(TEXT("Mouse Down!\n"));
-}
-
-void OnMouseUp(WPARAM p, int x, int y)
-{
-	OutputDebugString(TEXT("Mouse Up!\n"));
-}
-
 LRESULT CALLBACK WndProc(
 	HWND   hWnd,
 	UINT   message,
@@ -100,12 +89,12 @@ LRESULT CALLBACK WndProc(
 	case WM_LBUTTONDOWN:
 	case WM_MBUTTONDOWN:
 	case WM_RBUTTONDOWN:
-		OnMouseDown(wParam, ((int)(short)LOWORD(lParam)), ((int)(short)HIWORD(lParam)));
+		getCurrentApp().mousePressed();
 		break;
 	case WM_LBUTTONUP:
 	case WM_MBUTTONUP:
 	case WM_RBUTTONUP:
-		OnMouseUp(wParam, ((int)(short)LOWORD(lParam)), ((int)(short)HIWORD(lParam)));
+		getCurrentApp().mouseReleased();
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -124,9 +113,8 @@ int CALLBACK WinMain(
 	LPSTR lpCmdLine,
 	int nShowCmd)
 {
-
 	gState = WinApplicationState();
-	setup(); //call out to game code
+	getCurrentApp().setup(); //call out to game code
 
 	gState.hInstance = hInstance;
 
@@ -158,10 +146,10 @@ int CALLBACK WinMain(
 		return 1;
 	}
 
-	HWND hWnd = CreateWindow(
+	gState.hWindow = CreateWindow(
 		szWindowClass,
 		szTitle,
-		WS_OVERLAPPEDWINDOW,
+		WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		gState.width, gState.height,
 		NULL,
@@ -169,19 +157,17 @@ int CALLBACK WinMain(
 		hInstance,
 		NULL
 	);
-	if (!hWnd)
+	if (!gState.hWindow)
 	{
 		MessageBox(NULL,
 			TEXT("Call to Create Window failed!"),
-			TEXT("Win32 Guided Tour"),
+			TEXT("Sketch"),
 			NULL);
 
 		return 1;
 	}
-	gState.hWindow = hWnd;
-
-	ShowWindow(hWnd, nShowCmd);
-	UpdateWindow(hWnd);
+	ShowWindow(gState.hWindow, nShowCmd);
+	UpdateWindow(gState.hWindow);
 
 	//init d3d
 	{
@@ -223,21 +209,21 @@ int CALLBACK WinMain(
 
 		//create swap chain
 		DXGI_SWAP_CHAIN_DESC sd;
-		sd.BufferDesc.Width = gState.width;
-		sd.BufferDesc.Height = gState.height;
-		sd.BufferDesc.RefreshRate.Numerator = 60;
+		sd.BufferDesc.Width                   = gState.width;
+		sd.BufferDesc.Height                  = gState.height;
+		sd.BufferDesc.RefreshRate.Numerator   = 60;
 		sd.BufferDesc.RefreshRate.Denominator = 1;
-		sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-		sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-		sd.SampleDesc.Count = 1; //don't use msaa
-		sd.SampleDesc.Quality = 0;
-		sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		sd.BufferCount = 1;
-		sd.OutputWindow = hWnd;
-		sd.Windowed = true;
-		sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-		sd.Flags = 0;
+		sd.BufferDesc.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM;
+		sd.BufferDesc.ScanlineOrdering        = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+		sd.BufferDesc.Scaling                 = DXGI_MODE_SCALING_UNSPECIFIED;
+		sd.SampleDesc.Count                   = 1; //don't use msaa
+		sd.SampleDesc.Quality                 = 0;
+		sd.BufferUsage                        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		sd.BufferCount                        = 1;
+		sd.OutputWindow                       = gState.hWindow;
+		sd.Windowed                           = true;
+		sd.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
+		sd.Flags                              = 0;
 
 		IDXGIDevice* dxgiDevice = 0;
 		d3dDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgiDevice);
@@ -292,14 +278,10 @@ int CALLBACK WinMain(
 		vp.MaxDepth = 0.0f;
 		d3dImmediateContext->RSSetViewports(1, &vp);
 
-		gState.d3dDevice = d3dDevice;
+		gState.d3dDevice           = d3dDevice;
 		gState.d3dImmediateContext = d3dImmediateContext;
-		gState.renderTargetView = mRenderTargetView;
-		gState.swapChain = swapChain;
-		gState.d3dInitialized = true;
-
-		TCHAR workingDirBuff[4096];
-		GetCurrentDirectory(4096, workingDirBuff);
+		gState.renderTargetView    = mRenderTargetView;
+		gState.swapChain           = swapChain;
 
 		//todo -- set shared params
 #if _DEBUG
@@ -312,8 +294,8 @@ int CALLBACK WinMain(
 
 		D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
 		{
-			{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+			{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,   0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "COLOR",    0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 		};
 
 		ID3D11VertexShader* vertexShader;
@@ -384,7 +366,7 @@ int CALLBACK WinMain(
 
 		D3D11_BUFFER_DESC vertBufferDesc;
 		vertBufferDesc.Usage               = D3D11_USAGE_DYNAMIC;
-		vertBufferDesc.ByteWidth           = sizeof(Vertex_2DPosColor)* 600;
+		vertBufferDesc.ByteWidth           = sizeof(Vertex_2DPosColor)* 800;
 		vertBufferDesc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
 		vertBufferDesc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
 		vertBufferDesc.MiscFlags           = 0;
@@ -434,7 +416,6 @@ int CALLBACK WinMain(
 		rasterizerDesc.MultisampleEnable = false;
 		rasterizerDesc.AntialiasedLineEnable = false;
 		gState.d3dDevice->CreateRasterizerState(&rasterizerDesc, &gState.rasterizerState);
-
 	}
 	
 
@@ -480,6 +461,9 @@ int CALLBACK WinMain(
 //Color --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Color::Color()
 	: r(0), b(0), g(0), a(255) {}
+
+Color::Color(unsigned char gray, unsigned char a)
+	: Color(gray, gray, gray, a) {}
 
 Color::Color(unsigned char r, unsigned char g, unsigned char b, unsigned char a)
 	: r(r), g(g), b(b), a(a) {}
@@ -663,23 +647,23 @@ String operator+(const char* a, const String& b)
 
 // Processing functions ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void print(const char* text)
+void PApplet::print(const char* text)
 {
 	OutputDebugStringA(text);
 }
 
-void println(const char* text)
+void PApplet::println(const char* text)
 {
 	OutputDebugStringA(text);
 	OutputDebugStringA("\n");
 }
 
-void println(const String& text)
+void PApplet::println(const String& text)
 {
 	println(*text);
 }
 
-void size(int width, int height)
+void PApplet::size(int width, int height)
 {
 	gState.width = width;
 	gState.height = height;
@@ -687,70 +671,91 @@ void size(int width, int height)
 	//todo recreate render target
 }
 
-void frameRate(float frameRate)
+void PApplet::frameRate(float frameRate)
 {
 	gState.frameRate = frameRate;
 }
 
-int day()
+int PApplet::width()
+{
+	return gState.width;
+}
+
+int PApplet::height()
+{
+	return gState.height;
+}
+
+int PApplet::day()
 {
 	SYSTEMTIME systemTime;
 	GetLocalTime(&systemTime);
 	return systemTime.wDay;
 }
 
-int hour()
+int PApplet::hour()
 {
 	SYSTEMTIME systemTime;
 	GetLocalTime(&systemTime);
 	return systemTime.wHour;
 }
 
-int millis()
+int PApplet::millis()
 {
 	return  (int)(1000.0f * (gState.totalClockCount - gState.programStartCount )/ (float)gState.clockFrequency);
 }
 
-int month()
+int PApplet::month()
 {
 	SYSTEMTIME systemTime;
 	GetLocalTime(&systemTime);
 	return systemTime.wMonth;
 }
 
-int second()
+int PApplet::second()
 {
 	SYSTEMTIME systemTime;
 	GetLocalTime(&systemTime);
 	return systemTime.wSecond;
 }
 
-int year()
+int PApplet::year()
 {
 	SYSTEMTIME systemTime;
 	GetLocalTime(&systemTime);
 	return systemTime.wYear;
 }
 
-void fill(Color c)
+void PApplet::fill(Color c)
 {
-	gState.fillColor.x = c.r/255.0f;
-	gState.fillColor.y = c.g/255.0f;
-	gState.fillColor.z = c.b/255.0f;
-	gState.fillColor.w = c.a/255.0f;
+	gState.fillColor = c;
 }
 
-void triangle(float x1, float y1, float x2, float y2, float x3, float y3)
+
+
+static inline float pixelToViewportX(float x)
+{
+	return (x / gState.width) * 2 - 1;
+}
+
+static inline float pixelToViewportY(float y)
+{
+	return (1 - (y / gState.height)) * 2 - 1;
+}
+
+static inline XMFLOAT2 pixelToViewport(float x, float y)
+{
+	return XMFLOAT2( pixelToViewportX(x), pixelToViewportY(y) );
+}
+
+void PApplet::triangle(float x1, float y1, float x2, float y2, float x3, float y3)
 {
 	Vertex_2DPosColor v0;
 	Vertex_2DPosColor v1;
 	Vertex_2DPosColor v2;
-	v0.pos.x = x1;
-	v0.pos.y = y1;
-	v1.pos.x = x2;
-	v1.pos.y = y2;
-	v2.pos.x = x3;
-	v2.pos.y = y3;
+	v0.pos   = pixelToViewport(x1, y1);
+	v1.pos   = pixelToViewport(x2, y2);
+	v2.pos   = pixelToViewport(x3, y3);
 	v0.color = gState.fillColor;
 	v1.color = gState.fillColor;
 	v2.color = gState.fillColor;
@@ -759,13 +764,23 @@ void triangle(float x1, float y1, float x2, float y2, float x3, float y3)
 	gState.verts.push_back(v2);
 }
 
-void background(Color color)
+void PApplet::background(Color color)
 {
 	FLOAT clearColor[4] = { color.r/255.0f, color.g/255.0f, color.b/255.0f, color.a/255.0f};
 	gState.d3dImmediateContext->ClearRenderTargetView(gState.renderTargetView, clearColor);
 }
 
-float random(float high)
+float PApplet::cos(float angle)
+{
+	return cosf(angle);
+}
+
+float PApplet::sin(float angle)
+{
+	return sinf(angle);
+}
+
+float PApplet::random(float high)
 {
 	int r = rand();
 	float x =  r / (float)RAND_MAX;
@@ -773,7 +788,7 @@ float random(float high)
 	return result;
 }
 
-float random(float low, float high)
+float PApplet::random(float low, float high)
 {
 	int r = rand();
 	float x = r / (float)RAND_MAX;

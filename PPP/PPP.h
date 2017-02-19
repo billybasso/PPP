@@ -3,47 +3,101 @@
 class String;
 struct Color;
 
+
 //Processing API ------------------------------------------------------------
-void print(const char* text);
-void println(const char* text);
-void print(const String& text);
-void println(const String& text);
-
-//Random
-float random(float high);
-float random(float low, float high);
-
-//Constants
-const float QUARTER_PI = 0.7853982f;
-const float HALF_PI    = 1.5707964f;
-const float PI         = 3.1415927f;
-const float TWO_PI     = 6.2831855f;
-const float TAU        = 6.2831855f;
-
-//2D Primitives
-void triangle(float x1, float y1, float x2, float y2, float x3, float y3);
-
-void background(Color color);
-
-void size(int width, int height);
-void frameRate(float frameRate);
-
-//Time & Date
-int day();
-int hour();
-int millis();
-int month();
-int second();
-int year();
-
-//Color
-//Setting
-void fill(Color c);
+class PApplet
+{
+public:
 
 
-//these methods must be implemented for the sketch to run
-void setup();
-void draw();
+	static void print(const char* text);
+	static void println(const char* text);
+	static void print(const String& text);
+	static void println(const String& text);
+
+	//Constants
+	const float QUARTER_PI = 0.7853982f;
+	const float HALF_PI = 1.5707964f;
+	const float PI = 3.1415927f;
+	const float TWO_PI = 6.2831855f;
+	const float TAU = 6.2831855f;
+
+	//2D Primitives
+	static void triangle(float x1, float y1, float x2, float y2, float x3, float y3);
+
+	static void background(Color color);
+
+	static void size(int width, int height);
+	static void frameRate(float frameRate);
+	static int width();
+	static int height();
+
+	//Time & Date
+	static int day();
+	static int hour();
+	static int millis();
+	static int month();
+	static int second();
+	static int year();
+
+	//Color
+	//Setting
+	static void fill(Color c);
+
+	//Math
+
+	//Calculation
+	static int abs(int n);
+	static float abs(float n);
+	static int ceil(float n);
+	static int constrain(int amt, int low, int high);
+	static float constrain(float amt, float low, float high);
+	static float dist(float x1, float y1, float x2, float y2);
+	static float exp(float n);
+	static int floor(float n);
+	static float lerp(float start, float stop, float amt);
+	static float log(float a);
+	static float mag(float a, float b, float c);
+	static float map(float value, float start1, float stop1, float start2, float stop2);
+	static int max(int a, int b);
+	static int max(int a, int b, int c);
+	static int max(int list[], int listSize);
+	static float max(float a, float b);
+	static float max(float a, float b, float c);
+	static float max(float list[], int listSize);
+	static int min(int a, int b);
+	static int min(int a, int b, int c);
+	static int min(int list[], int listSize);
+	static float min(float a, float b);
+	static float min(float a, float b, float c);
+	static float min(float list[], int listSize);
+	static float norm(float value, float start, float stop);
+	static float pow(float n, float e);
+	static int round(float n);
+	static float sq(float n);
+	static float sqrt(float n);
+
+	//Trigonometry
+	static float acos(float value);
+	static float asin(float value);
+	static float atan(float value);
+	static float atan2(float y, float x);
+	static float cos(float angle);
+	static float degrees(float radians);
+	static float radians(float degrees);
+	static float sin(float angle);
+	static float tan(float angle);
+
+	//Random
+	static float random(float high);
+	static float random(float low, float high);
+
+	virtual void setup() {}
+	virtual void draw() {}
+	virtual void mousePressed() {}
+	virtual void mouseReleased() {}
+
+};
 
 //types
 
@@ -52,6 +106,7 @@ void draw();
 struct Color
 {
 	Color();
+	Color(unsigned char gray, unsigned char a = 255);
 	Color(unsigned char r, unsigned char g, unsigned char b, unsigned char a = 255);
 
 	const Color operator *(const Color & rhs) const;
@@ -119,4 +174,12 @@ public:
 String operator+(const char* a, const String& b);
 
 
+extern class PApplet& getCurrentApp();
+
+#define SET_SKETCH_CLASS( SketchClass )      \
+inline PApplet& getCurrentApp()              \
+{                                            \
+	static SketchClass inst = SketchClass(); \
+	return inst;                             \
+}                                            \
 
