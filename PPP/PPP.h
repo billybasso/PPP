@@ -72,13 +72,13 @@ public:
 	static float log(float a);
 	static float mag(float a, float b, float c);
 	static float map(float value, float start1, float stop1, float start2, float stop2);
-	static int max(int a, int b);
+	static int maxt(int a, int b);
 	static int max(int a, int b, int c);
 	static int max(int list[], int listSize);
 	static float max(float a, float b);
 	static float max(float a, float b, float c);
 	static float max(float list[], int listSize);
-	static int min(int a, int b);
+	static int mint(int a, int b);
 	static int min(int a, int b, int c);
 	static int min(int list[], int listSize);
 	static float min(float a, float b);
@@ -104,6 +104,9 @@ public:
 	//Random
 	static float random(float high);
 	static float random(float low, float high);
+
+	static float mouseX();
+	static float mouseY();
 
 	virtual void setup() {}
 	virtual void draw() {}

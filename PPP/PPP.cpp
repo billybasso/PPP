@@ -16,8 +16,10 @@ using namespace DirectX::PackedVector;
 
 #pragma comment(lib, "d3d11")
 
-static const int DEFAULT_WINDOW_WIDTH  = 640;
-static const int DEFAULT_WINDOW_HEIGHT = 360;
+static const int NUM_VERTS = 30000;
+
+static const int DEFAULT_WINDOW_WIDTH  = 100;
+static const int DEFAULT_WINDOW_HEIGHT = 100;
 static const float DEFAULT_FRAME_RATE  = 60;
 
 struct Vertex_2DPosColor
@@ -42,10 +44,13 @@ struct WinApplicationState
 	__int64 clockFrequency;
 	__int64 totalClockCount;
 
+	float mouseX = 0;
+	float mouseY = 0;
 	ID3D11Buffer* vertBuffer;
 	vector<Vertex_2DPosColor> verts;
 
 	//processing state
+	//style
 	Color fillColor = { 255, 255, 255, 255 };
 	RectMode rectMode = CORNER;
 
@@ -54,21 +59,20 @@ struct WinApplicationState
 static WinApplicationState gState;
 
 
-void Update()
-{
-}
-
 void Draw()
 {
 	gState.verts.clear();
 	getCurrentApp().draw(); //call out to game code
 
+	//gState.d3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	gState.d3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ);
+
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	ZeroMemory(&mappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
 	
 	gState.d3dImmediateContext->Map(gState.vertBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	size_t byteSize = sizeof(gState.verts[0])* gState.verts.size();
 	size_t vertSize = sizeof(Vertex_2DPosColor);
+	size_t byteSize = vertSize * (UINT)gState.verts.size();
 	memcpy(mappedResource.pData, gState.verts.data(), byteSize);
 	gState.d3dImmediateContext->Unmap(gState.vertBuffer, 0);
 
@@ -149,12 +153,16 @@ int CALLBACK WinMain(
 		return 1;
 	}
 
+	DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
+	RECT desiredSize = { 0,0,gState.width,gState.height };
+	BOOL hasMenu = false;
+	AdjustWindowRect(&desiredSize, style, false);
 	gState.hWindow = CreateWindow(
 		szWindowClass,
 		szTitle,
-		WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
+		style,
 		CW_USEDEFAULT, CW_USEDEFAULT,
-		gState.width, gState.height,
+		desiredSize.right - desiredSize.left, desiredSize.bottom - desiredSize.top,
 		NULL,
 		NULL,
 		hInstance,
@@ -275,8 +283,8 @@ int CALLBACK WinMain(
 		D3D11_VIEWPORT vp;
 		vp.TopLeftX = 0;
 		vp.TopLeftY = 0;
-		vp.Width = (FLOAT)gState.width;
-		vp.Height = (FLOAT)gState.height;
+		vp.Width    = (FLOAT)gState.width;
+		vp.Height   = (FLOAT)gState.height;
 		vp.MinDepth = 0.0f;
 		vp.MaxDepth = 0.0f;
 		d3dImmediateContext->RSSetViewports(1, &vp);
@@ -369,14 +377,14 @@ int CALLBACK WinMain(
 
 		D3D11_BUFFER_DESC vertBufferDesc;
 		vertBufferDesc.Usage               = D3D11_USAGE_DYNAMIC;
-		vertBufferDesc.ByteWidth           = sizeof(Vertex_2DPosColor)* 800;
+		vertBufferDesc.ByteWidth           = sizeof(Vertex_2DPosColor)* NUM_VERTS;
 		vertBufferDesc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
 		vertBufferDesc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
 		vertBufferDesc.MiscFlags           = 0;
 		vertBufferDesc.StructureByteStride = 0;
 
 		D3D11_SUBRESOURCE_DATA vertInitData;
-		gState.verts.reserve(1000);
+		gState.verts.reserve(NUM_VERTS);
 		vertInitData.pSysMem = gState.verts.data();
 
 		gState.d3dDevice->CreateBuffer(&vertBufferDesc, &vertInitData, &gState.vertBuffer);
@@ -412,11 +420,11 @@ int CALLBACK WinMain(
 
 		D3D11_RASTERIZER_DESC rasterizerDesc;
 		ZeroMemory(&rasterizerDesc, sizeof(D3D11_RASTERIZER_DESC));
-		rasterizerDesc.FillMode = D3D11_FILL_SOLID;
-		rasterizerDesc.CullMode = D3D11_CULL_NONE; //todo -- this could maybe be changed
+		rasterizerDesc.FillMode              = D3D11_FILL_SOLID;
+		rasterizerDesc.CullMode              = D3D11_CULL_NONE; //todo -- this could maybe be changed
 		rasterizerDesc.FrontCounterClockwise = false;
-		rasterizerDesc.DepthClipEnable = false; //the book set this to true
-		rasterizerDesc.MultisampleEnable = false;
+		rasterizerDesc.DepthClipEnable       = false; //the book set this to true
+		rasterizerDesc.MultisampleEnable     = false;
 		rasterizerDesc.AntialiasedLineEnable = false;
 		gState.d3dDevice->CreateRasterizerState(&rasterizerDesc, &gState.rasterizerState);
 	}
@@ -448,9 +456,16 @@ int CALLBACK WinMain(
 			dt += (counts - prevCount) * period;
 			if (dt > framePeriod)
 			{
-				Update();
+				POINT p;
+				GetCursorPos(&p);
+				ScreenToClient(gState.hWindow, &p);
+				gState.mouseX = (float)p.x;
+				gState.mouseY = (float)p.y;
+				RECT rect;
+				GetClientRect(gState.hWindow, &rect);
+				PApplet::println(String("client rect ") + rect.right + ", " + rect.bottom);
 				Draw();
-				dt = 0;
+				dt -= framePeriod;
 			}
 			prevCount = counts;
 		}
@@ -899,4 +914,23 @@ float PApplet::random(float low, float high)
 	float x = r / (float)RAND_MAX;
 	float result = x * (high - low);
 	return low + result;
+}
+
+float PApplet::mouseX()
+{
+	return gState.mouseX;
+}
+float PApplet::mouseY()
+{
+	return gState.mouseY;
+}
+
+int PApplet::mint(int a, int b)
+{
+	return a < b ? a : b;
+}
+
+int PApplet::maxt(int a, int b)
+{
+	return a > b ? a : b;
 }
