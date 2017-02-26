@@ -36,9 +36,10 @@ struct WinApplicationState
 	ID3D11DeviceContext* d3dImmediateContext;
 	ID3D11RenderTargetView* renderTargetView;
 	ID3D11RasterizerState* rasterizerState;
+	ID3D11BlendState* blendState;
 	IDXGISwapChain* swapChain;
-	int width     = DEFAULT_WINDOW_WIDTH;
-	int height    = DEFAULT_WINDOW_HEIGHT;
+	int width       = DEFAULT_WINDOW_WIDTH;
+	int height      = DEFAULT_WINDOW_HEIGHT;
 	float frameRate = DEFAULT_FRAME_RATE;
 	__int64 programStartCount;
 	__int64 clockFrequency;
@@ -52,7 +53,9 @@ struct WinApplicationState
 	//processing state
 	//style
 	Color fillColor = { 255, 255, 255, 255 };
-	RectMode rectMode = CORNER;
+	RectMode rectMode = RectMode::CORNER;
+	float strokeWeight = 1;
+	Color stroke = { 255, 255, 255, 255 };
 
 };
 
@@ -64,8 +67,8 @@ void Draw()
 	gState.verts.clear();
 	getCurrentApp().draw(); //call out to game code
 
-	//gState.d3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	gState.d3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ);
+	gState.d3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	//gState.d3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
 
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	ZeroMemory(&mappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
@@ -427,6 +430,27 @@ int CALLBACK WinMain(
 		rasterizerDesc.MultisampleEnable     = false;
 		rasterizerDesc.AntialiasedLineEnable = false;
 		gState.d3dDevice->CreateRasterizerState(&rasterizerDesc, &gState.rasterizerState);
+
+
+		//Setup Blend State
+		D3D11_BLEND_DESC BlendStateDescription;
+		ZeroMemory(&BlendStateDescription, sizeof(D3D11_BLEND_DESC));
+		BlendStateDescription.RenderTarget[0].BlendEnable           = true;
+		BlendStateDescription.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+		BlendStateDescription.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_MAX;
+		BlendStateDescription.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+		BlendStateDescription.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+		BlendStateDescription.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+		BlendStateDescription.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+		BlendStateDescription.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+		gState.d3dDevice->CreateBlendState(&BlendStateDescription, &gState.blendState);
+
+		float blendFactor[] = { 0,0, 0, 0 };
+		UINT sampleMask = 0xffffffff;
+		gState.d3dImmediateContext->OMSetBlendState(gState.blendState, blendFactor, sampleMask);
+
+
+		getCurrentApp().background(Color(170, 170, 170, 255));
 	}
 	
 
@@ -749,6 +773,11 @@ void PApplet::fill(Color c)
 	gState.fillColor = c;
 }
 
+void PApplet::stroke(Color c)
+{
+	gState.stroke = c;
+}
+
 
 
 static inline float pixelToViewportX(float x)
@@ -766,20 +795,115 @@ static inline XMFLOAT2 pixelToViewport(float x, float y)
 	return XMFLOAT2( pixelToViewportX(x), pixelToViewportY(y) );
 }
 
+static inline XMFLOAT2 pixelToViewport(XMFLOAT2 v)
+{
+	return pixelToViewport(v.x, v.y);
+}
+
 void PApplet::triangle(float x1, float y1, float x2, float y2, float x3, float y3)
 {
+	XMFLOAT2 v0Pix = { x1, y1 };
+	XMFLOAT2 v1Pix = { x2, y2 };
+	XMFLOAT2 v2Pix = { x3, y3 };
 	Vertex_2DPosColor v0;
 	Vertex_2DPosColor v1;
 	Vertex_2DPosColor v2;
-	v0.pos   = pixelToViewport(x1, y1);
-	v1.pos   = pixelToViewport(x2, y2);
-	v2.pos   = pixelToViewport(x3, y3);
+	v0.pos   = pixelToViewport(v0Pix);
+	v1.pos   = pixelToViewport(v1Pix);
+	v2.pos   = pixelToViewport(v2Pix);
 	v0.color = gState.fillColor;
 	v1.color = gState.fillColor;
 	v2.color = gState.fillColor;
 	gState.verts.push_back(v0);
 	gState.verts.push_back(v1);
 	gState.verts.push_back(v2);
+
+	//draw stroke
+
+	XMVECTOR p0V = ::XMLoadFloat2(&v0Pix);
+	XMVECTOR p1V = ::XMLoadFloat2(&v1Pix);
+	XMVECTOR p2V = ::XMLoadFloat2(&v2Pix);
+	XMFLOAT2 halfWeight = XMFLOAT2(gState.strokeWeight/2.0f, gState.strokeWeight/2.0f);
+	XMVECTOR halfWeightV = ::XMLoadFloat2(&halfWeight);
+
+
+	XMVECTOR p0P1Perp = ::XMVectorMultiply(::XMVector2Normalize(::XMVector3Orthogonal(::XMVectorSubtract(p0V, p1V))), halfWeightV);
+	XMVECTOR p1P2Perp = ::XMVectorMultiply(::XMVector2Normalize(::XMVector3Orthogonal(::XMVectorSubtract(p1V, p2V))), halfWeightV);
+	XMVECTOR p2P0Perp = ::XMVectorMultiply(::XMVector2Normalize(::XMVector3Orthogonal(::XMVectorSubtract(p2V, p0V))), halfWeightV);
+	XMVECTOR p2P0_P0Outer = ::XMVectorAdd(p0V, p2P0Perp);
+	XMVECTOR p2P0_P2Outer = ::XMVectorAdd(p2V, p2P0Perp);
+	XMVECTOR p0P1_P1Outer = ::XMVectorAdd(p1V, p0P1Perp);
+	XMVECTOR p0P1_P0Outer = ::XMVectorAdd(p0V, p0P1Perp);
+	XMVECTOR p1P2_P2Outer = ::XMVectorAdd(p2V, p1P2Perp);
+	XMVECTOR p1P2_P1Outer = ::XMVectorAdd(p1V, p1P2Perp);
+
+	XMVECTOR p2P0_P0Inner = ::XMVectorSubtract(p0V, p2P0Perp);
+	XMVECTOR p2P0_P2Inner = ::XMVectorSubtract(p2V, p2P0Perp);
+	XMVECTOR p0P1_P1Inner = ::XMVectorSubtract(p1V, p0P1Perp);
+	XMVECTOR p0P1_P0Inner = ::XMVectorSubtract(p0V, p0P1Perp);
+	XMVECTOR p1P2_P2Inner = ::XMVectorSubtract(p2V, p1P2Perp);
+	XMVECTOR p1P2_P1Inner = ::XMVectorSubtract(p1V, p1P2Perp);
+	XMVECTOR p0Out = ::XMVector2IntersectLine(p2P0_P0Outer, p2P0_P2Outer, p0P1_P1Outer, p0P1_P0Outer);
+	XMVECTOR p1Out = ::XMVector2IntersectLine(p0P1_P1Outer, p0P1_P0Outer, p1P2_P2Outer, p1P2_P1Outer);
+	XMVECTOR p2Out = ::XMVector2IntersectLine(p2P0_P0Outer, p2P0_P2Outer, p1P2_P2Outer, p1P2_P1Outer);
+
+	XMVECTOR p0In = ::XMVector2IntersectLine(p2P0_P0Inner, p2P0_P2Inner, p0P1_P1Inner, p0P1_P0Inner);
+	XMVECTOR p1In = ::XMVector2IntersectLine(p0P1_P1Inner, p0P1_P0Inner, p1P2_P2Inner, p1P2_P1Inner);
+	XMVECTOR p2In = ::XMVector2IntersectLine(p2P0_P0Inner, p2P0_P2Inner, p1P2_P2Inner, p1P2_P1Inner);
+
+	Vertex_2DPosColor v0Out;
+	Vertex_2DPosColor v1Out;
+	Vertex_2DPosColor v2Out;
+	Vertex_2DPosColor v0In;
+	Vertex_2DPosColor v1In;
+	Vertex_2DPosColor v2In;
+
+	::XMStoreFloat2(&v0Out.pos, p0Out);
+	::XMStoreFloat2(&v1Out.pos, p1Out);
+	::XMStoreFloat2(&v2Out.pos, p2Out);
+	::XMStoreFloat2(&v0In.pos, p0In);
+	::XMStoreFloat2(&v1In.pos, p1In);
+	::XMStoreFloat2(&v2In.pos, p2In);
+	v0Out.color = gState.stroke;
+	v1Out.color = gState.stroke;
+	v2Out.color = gState.stroke;
+	v0In.color  = gState.stroke;
+	v1In.color  = gState.stroke;
+	v2In.color  = gState.stroke;
+
+	v0Out.pos = pixelToViewport(v0Out.pos);
+	v1Out.pos = pixelToViewport(v1Out.pos);
+	v2Out.pos = pixelToViewport(v2Out.pos);
+	v0In.pos  = pixelToViewport(v0In.pos);
+	v1In.pos  = pixelToViewport(v1In.pos);
+	v2In.pos  = pixelToViewport(v2In.pos);
+
+	gState.verts.push_back(v0Out);
+	gState.verts.push_back(v2Out);
+	gState.verts.push_back(v2In);
+
+	gState.verts.push_back(v2In);
+	gState.verts.push_back(v0In);
+	gState.verts.push_back(v0Out);
+
+	gState.verts.push_back(v2Out);
+	gState.verts.push_back(v1Out);
+	gState.verts.push_back(v1In);
+
+	gState.verts.push_back(v1In);
+	gState.verts.push_back(v2In);
+	gState.verts.push_back(v2Out);
+
+
+	gState.verts.push_back(v1Out);
+	gState.verts.push_back(v0Out);
+	gState.verts.push_back(v0In);
+
+	gState.verts.push_back(v0In);
+	gState.verts.push_back(v1In);
+	gState.verts.push_back(v1Out);
+
+
 }
 
 void PApplet::quad(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4)
@@ -792,16 +916,16 @@ void PApplet::rect(float a, float b, float c, float d)
 {
 	switch (gState.rectMode)
 	{
-	case CORNER:
+	case RectMode::CORNER:
 		quad(a, b, a + c, b, a + c, b + d, a, b + d);
 		break;
-	case CORNERS:
+	case RectMode::CORNERS:
 		quad(a, b, c, b, c, d, a, d);
 		break;
-	case RADIUS:
+	case RectMode::RADIUS:
 		quad(a - c, b - d, a + c, b - d, a + c, b + d, a - c, b + d);
 		break;
-	case CENTER:
+	case RectMode::CENTER:
 		quad(a - c/2, b - d/2, a + c/2, b - d/2, a + c/2, b + d/2, a - c/2, b + d/2);
 		break;
 	}
@@ -812,7 +936,7 @@ void PApplet::rect(float a, float b, float c, float d, float r)
 	float x1, y1, x2, y2, x3, y3, x4, y4;
 	switch (gState.rectMode)
 	{
-	case CORNER:
+	case RectMode::CORNER:
 		x1 = a + r;
 		y1 = b + r;
 		x2 = a + c - r;
@@ -822,7 +946,7 @@ void PApplet::rect(float a, float b, float c, float d, float r)
 		x4 = a + r;
 		y4 = b + d - r;
 		break;
-	case CORNERS:
+	case RectMode::CORNERS:
 		x1 = a + r;
 		y1 = b + r;
 		x2 = c - r;
@@ -832,7 +956,7 @@ void PApplet::rect(float a, float b, float c, float d, float r)
 		x4 = a + r;
 		y4 = d - r;
 		break;
-	case RADIUS:
+	case RectMode::RADIUS:
 		x1 = a - c + r;
 		y1 = b - d + r;
 		x2 = a + c - r;
@@ -842,7 +966,7 @@ void PApplet::rect(float a, float b, float c, float d, float r)
 		x4 = a - c + r;
 		y4 = b + d - r;
 		break;
-	case CENTER:
+	case RectMode::CENTER:
 		x1 = a - (c / 2) + r;
 		y1 = b - (d / 2) + r;
 		x2 = a + (c / 2) - r;
@@ -882,6 +1006,11 @@ void PApplet::rect(float a, float b, float c, float d, float r)
 void PApplet::rectMode(RectMode mode)
 {
 	gState.rectMode = mode;
+}
+
+void PApplet::strokeWeight(float weight)
+{
+	gState.strokeWeight = weight;
 }
 
 void PApplet::background(Color color)

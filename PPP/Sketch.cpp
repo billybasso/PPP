@@ -49,7 +49,7 @@ class TestSketch : public PApplet
 
 	void draw()
 	{
-		background(Color::black);
+		//background(Color(0, 0, 0, 1));
 
 		int curMillis = millis();
 
@@ -60,8 +60,9 @@ class TestSketch : public PApplet
 		particles[curParticle].millis = curMillis;
 		particles[curParticle].size   = 100;
 
-		rectMode(CENTER);
+		rectMode(RectMode::CENTER);
 
+		/*
 		for (int i = 0; i < NUM_PARTICLES; ++i)
 		{
 			Particle& particle = particles[(i + curParticle) % NUM_PARTICLES];
@@ -82,18 +83,24 @@ class TestSketch : public PApplet
 			}
 		}
 		curParticle = (curParticle+1)% NUM_PARTICLES;
+		*/
 		
 		//for (int i = 255; i >= 0; --i)
 		//{
 		//	drawTriangle(frames / (float)(i + 1), i);
 		//}
+		strokeWeight(mouseX()/10);
+		stroke(Color(frames % 255, (100 + frames/2)%255, (200 + frames * 2) % 255, 50));
+		fill(Color(255, 255, 255, 50));
+		triangle(mouseX() + 300 , mouseY(), mouseX() - 300, mouseY(), mouseX(), mouseY() + 300);
+
 		++frames;
 
 	}
 
 	void mousePressed() override
 	{
-		bgColor = Color(random(256), random(256), random(256));
+		bgColor = Color((int)random(256), (int)random(256), (int)random(256));
 	}
 
 	void mouseReleased() override

@@ -3,7 +3,7 @@
 class String;
 struct Color;
 
-enum RectMode
+enum class RectMode
 {
 	CORNER,
 	CORNERS,
@@ -11,12 +11,27 @@ enum RectMode
 	CENTER,
 };
 
+enum class JointStyle
+{
+	MITER,
+	BEVEL,
+	ROUND,
+};
+
+enum class StrokeCapStyle
+{
+	SQUARE,
+	PROJECT,
+	ROUND
+};
+
+
 // Constants
 const float QUARTER_PI = 0.7853982f;
-const float HALF_PI = 1.5707964f;
-const float PI = 3.1415927f;
-const float TWO_PI = 6.2831855f;
-const float TAU = 6.2831855f;
+const float HALF_PI    = 1.5707964f;
+const float PI         = 3.1415927f;
+const float TWO_PI     = 6.2831855f;
+const float TAU        = 6.2831855f;
 
 //Processing API ------------------------------------------------------------
 class PApplet
@@ -36,9 +51,8 @@ public:
 	static void rect(float a, float b, float c, float d, float r);
 	//Attributes
 	void rectMode(RectMode mode);
+	void strokeWeight(float weight);
 
-
-	static void background(Color color);
 
 	static void size(int width, int height);
 	static void frameRate(float frameRate);
@@ -55,8 +69,9 @@ public:
 
 	//Color
 	//Setting
+	static void background(Color color);
 	static void fill(Color c);
-
+	static void stroke(Color c);
 	//Math
 
 	//Calculation
