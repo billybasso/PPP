@@ -72,6 +72,7 @@ public:
 	static void background(Color color);
 	static void fill(Color c);
 	static void stroke(Color c);
+	static void noStroke();
 	//Math
 
 	//Calculation

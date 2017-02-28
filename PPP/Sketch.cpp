@@ -50,7 +50,11 @@ class TestSketch : public PApplet
 	void draw()
 	{
 		//background(Color(0, 0, 0, 1));
-
+		fill(Color(170, 170, 170, 10));
+		//noStroke();
+		stroke(Color(0));
+		rectMode(RectMode::CORNER);
+		rect((float)0, (float)0, (float)width(), (float)height());
 		int curMillis = millis();
 
 		particles[curParticle].active = true;
@@ -62,7 +66,7 @@ class TestSketch : public PApplet
 
 		rectMode(RectMode::CENTER);
 
-		/*
+		
 		for (int i = 0; i < NUM_PARTICLES; ++i)
 		{
 			Particle& particle = particles[(i + curParticle) % NUM_PARTICLES];
@@ -83,16 +87,14 @@ class TestSketch : public PApplet
 			}
 		}
 		curParticle = (curParticle+1)% NUM_PARTICLES;
-		*/
 		
-		//for (int i = 255; i >= 0; --i)
-		//{
-		//	drawTriangle(frames / (float)(i + 1), i);
-		//}
-		strokeWeight(mouseX()/10);
-		stroke(Color(frames % 255, (100 + frames/2)%255, (200 + frames * 2) % 255, 50));
+		for (int i = 255; i >= 0; --i)
+		{
+			drawTriangle(frames / (float)(i + 1), i);
+		}
+		strokeWeight(20 + 15 * sin(frames/10.f));
 		fill(Color(255, 255, 255, 50));
-		triangle(mouseX() + 300 , mouseY(), mouseX() - 300, mouseY(), mouseX(), mouseY() + 300);
+		//triangle(mouseX() + 300 , mouseY(), mouseX() - 300, mouseY(), mouseX(), mouseY() + 300);
 
 		++frames;
 

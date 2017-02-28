@@ -54,6 +54,7 @@ struct WinApplicationState
 	//style
 	Color fillColor = { 255, 255, 255, 255 };
 	RectMode rectMode = RectMode::CORNER;
+	bool strokeEnabled = false;
 	float strokeWeight = 1;
 	Color stroke = { 255, 255, 255, 255 };
 
@@ -775,7 +776,13 @@ void PApplet::fill(Color c)
 
 void PApplet::stroke(Color c)
 {
+	gState.strokeEnabled = true;
 	gState.stroke = c;
+}
+
+void PApplet::noStroke()
+{
+	gState.strokeEnabled = false;
 }
 
 
@@ -819,91 +826,90 @@ void PApplet::triangle(float x1, float y1, float x2, float y2, float x3, float y
 	gState.verts.push_back(v2);
 
 	//draw stroke
+	if (gState.strokeEnabled)
+	{
+		XMVECTOR p0V = ::XMLoadFloat2(&v0Pix);
+		XMVECTOR p1V = ::XMLoadFloat2(&v1Pix);
+		XMVECTOR p2V = ::XMLoadFloat2(&v2Pix);
+		XMFLOAT2 halfWeight = XMFLOAT2(gState.strokeWeight / 2.0f, gState.strokeWeight / 2.0f);
+		XMVECTOR halfWeightV = ::XMLoadFloat2(&halfWeight);
 
-	XMVECTOR p0V = ::XMLoadFloat2(&v0Pix);
-	XMVECTOR p1V = ::XMLoadFloat2(&v1Pix);
-	XMVECTOR p2V = ::XMLoadFloat2(&v2Pix);
-	XMFLOAT2 halfWeight = XMFLOAT2(gState.strokeWeight/2.0f, gState.strokeWeight/2.0f);
-	XMVECTOR halfWeightV = ::XMLoadFloat2(&halfWeight);
+		XMVECTOR p0P1Perp = ::XMVectorMultiply(::XMVector2Normalize(::XMVector3Orthogonal(::XMVectorSubtract(p0V, p1V))), halfWeightV);
+		XMVECTOR p1P2Perp = ::XMVectorMultiply(::XMVector2Normalize(::XMVector3Orthogonal(::XMVectorSubtract(p1V, p2V))), halfWeightV);
+		XMVECTOR p2P0Perp = ::XMVectorMultiply(::XMVector2Normalize(::XMVector3Orthogonal(::XMVectorSubtract(p2V, p0V))), halfWeightV);
+		XMVECTOR p2P0_P0Outer = ::XMVectorAdd(p0V, p2P0Perp);
+		XMVECTOR p2P0_P2Outer = ::XMVectorAdd(p2V, p2P0Perp);
+		XMVECTOR p0P1_P1Outer = ::XMVectorAdd(p1V, p0P1Perp);
+		XMVECTOR p0P1_P0Outer = ::XMVectorAdd(p0V, p0P1Perp);
+		XMVECTOR p1P2_P2Outer = ::XMVectorAdd(p2V, p1P2Perp);
+		XMVECTOR p1P2_P1Outer = ::XMVectorAdd(p1V, p1P2Perp);
 
+		XMVECTOR p2P0_P0Inner = ::XMVectorSubtract(p0V, p2P0Perp);
+		XMVECTOR p2P0_P2Inner = ::XMVectorSubtract(p2V, p2P0Perp);
+		XMVECTOR p0P1_P1Inner = ::XMVectorSubtract(p1V, p0P1Perp);
+		XMVECTOR p0P1_P0Inner = ::XMVectorSubtract(p0V, p0P1Perp);
+		XMVECTOR p1P2_P2Inner = ::XMVectorSubtract(p2V, p1P2Perp);
+		XMVECTOR p1P2_P1Inner = ::XMVectorSubtract(p1V, p1P2Perp);
+		XMVECTOR p0Out = ::XMVector2IntersectLine(p2P0_P0Outer, p2P0_P2Outer, p0P1_P1Outer, p0P1_P0Outer);
+		XMVECTOR p1Out = ::XMVector2IntersectLine(p0P1_P1Outer, p0P1_P0Outer, p1P2_P2Outer, p1P2_P1Outer);
+		XMVECTOR p2Out = ::XMVector2IntersectLine(p2P0_P0Outer, p2P0_P2Outer, p1P2_P2Outer, p1P2_P1Outer);
 
-	XMVECTOR p0P1Perp = ::XMVectorMultiply(::XMVector2Normalize(::XMVector3Orthogonal(::XMVectorSubtract(p0V, p1V))), halfWeightV);
-	XMVECTOR p1P2Perp = ::XMVectorMultiply(::XMVector2Normalize(::XMVector3Orthogonal(::XMVectorSubtract(p1V, p2V))), halfWeightV);
-	XMVECTOR p2P0Perp = ::XMVectorMultiply(::XMVector2Normalize(::XMVector3Orthogonal(::XMVectorSubtract(p2V, p0V))), halfWeightV);
-	XMVECTOR p2P0_P0Outer = ::XMVectorAdd(p0V, p2P0Perp);
-	XMVECTOR p2P0_P2Outer = ::XMVectorAdd(p2V, p2P0Perp);
-	XMVECTOR p0P1_P1Outer = ::XMVectorAdd(p1V, p0P1Perp);
-	XMVECTOR p0P1_P0Outer = ::XMVectorAdd(p0V, p0P1Perp);
-	XMVECTOR p1P2_P2Outer = ::XMVectorAdd(p2V, p1P2Perp);
-	XMVECTOR p1P2_P1Outer = ::XMVectorAdd(p1V, p1P2Perp);
+		XMVECTOR p0In = ::XMVector2IntersectLine(p2P0_P0Inner, p2P0_P2Inner, p0P1_P1Inner, p0P1_P0Inner);
+		XMVECTOR p1In = ::XMVector2IntersectLine(p0P1_P1Inner, p0P1_P0Inner, p1P2_P2Inner, p1P2_P1Inner);
+		XMVECTOR p2In = ::XMVector2IntersectLine(p2P0_P0Inner, p2P0_P2Inner, p1P2_P2Inner, p1P2_P1Inner);
 
-	XMVECTOR p2P0_P0Inner = ::XMVectorSubtract(p0V, p2P0Perp);
-	XMVECTOR p2P0_P2Inner = ::XMVectorSubtract(p2V, p2P0Perp);
-	XMVECTOR p0P1_P1Inner = ::XMVectorSubtract(p1V, p0P1Perp);
-	XMVECTOR p0P1_P0Inner = ::XMVectorSubtract(p0V, p0P1Perp);
-	XMVECTOR p1P2_P2Inner = ::XMVectorSubtract(p2V, p1P2Perp);
-	XMVECTOR p1P2_P1Inner = ::XMVectorSubtract(p1V, p1P2Perp);
-	XMVECTOR p0Out = ::XMVector2IntersectLine(p2P0_P0Outer, p2P0_P2Outer, p0P1_P1Outer, p0P1_P0Outer);
-	XMVECTOR p1Out = ::XMVector2IntersectLine(p0P1_P1Outer, p0P1_P0Outer, p1P2_P2Outer, p1P2_P1Outer);
-	XMVECTOR p2Out = ::XMVector2IntersectLine(p2P0_P0Outer, p2P0_P2Outer, p1P2_P2Outer, p1P2_P1Outer);
+		Vertex_2DPosColor v0Out;
+		Vertex_2DPosColor v1Out;
+		Vertex_2DPosColor v2Out;
+		Vertex_2DPosColor v0In;
+		Vertex_2DPosColor v1In;
+		Vertex_2DPosColor v2In;
 
-	XMVECTOR p0In = ::XMVector2IntersectLine(p2P0_P0Inner, p2P0_P2Inner, p0P1_P1Inner, p0P1_P0Inner);
-	XMVECTOR p1In = ::XMVector2IntersectLine(p0P1_P1Inner, p0P1_P0Inner, p1P2_P2Inner, p1P2_P1Inner);
-	XMVECTOR p2In = ::XMVector2IntersectLine(p2P0_P0Inner, p2P0_P2Inner, p1P2_P2Inner, p1P2_P1Inner);
+		::XMStoreFloat2(&v0Out.pos, p0Out);
+		::XMStoreFloat2(&v1Out.pos, p1Out);
+		::XMStoreFloat2(&v2Out.pos, p2Out);
+		::XMStoreFloat2(&v0In.pos, p0In);
+		::XMStoreFloat2(&v1In.pos, p1In);
+		::XMStoreFloat2(&v2In.pos, p2In);
+		v0Out.color = gState.stroke;
+		v1Out.color = gState.stroke;
+		v2Out.color = gState.stroke;
+		v0In.color = gState.stroke;
+		v1In.color = gState.stroke;
+		v2In.color = gState.stroke;
 
-	Vertex_2DPosColor v0Out;
-	Vertex_2DPosColor v1Out;
-	Vertex_2DPosColor v2Out;
-	Vertex_2DPosColor v0In;
-	Vertex_2DPosColor v1In;
-	Vertex_2DPosColor v2In;
+		v0Out.pos = pixelToViewport(v0Out.pos);
+		v1Out.pos = pixelToViewport(v1Out.pos);
+		v2Out.pos = pixelToViewport(v2Out.pos);
+		v0In.pos = pixelToViewport(v0In.pos);
+		v1In.pos = pixelToViewport(v1In.pos);
+		v2In.pos = pixelToViewport(v2In.pos);
 
-	::XMStoreFloat2(&v0Out.pos, p0Out);
-	::XMStoreFloat2(&v1Out.pos, p1Out);
-	::XMStoreFloat2(&v2Out.pos, p2Out);
-	::XMStoreFloat2(&v0In.pos, p0In);
-	::XMStoreFloat2(&v1In.pos, p1In);
-	::XMStoreFloat2(&v2In.pos, p2In);
-	v0Out.color = gState.stroke;
-	v1Out.color = gState.stroke;
-	v2Out.color = gState.stroke;
-	v0In.color  = gState.stroke;
-	v1In.color  = gState.stroke;
-	v2In.color  = gState.stroke;
+		gState.verts.push_back(v0Out);
+		gState.verts.push_back(v2Out);
+		gState.verts.push_back(v2In);
 
-	v0Out.pos = pixelToViewport(v0Out.pos);
-	v1Out.pos = pixelToViewport(v1Out.pos);
-	v2Out.pos = pixelToViewport(v2Out.pos);
-	v0In.pos  = pixelToViewport(v0In.pos);
-	v1In.pos  = pixelToViewport(v1In.pos);
-	v2In.pos  = pixelToViewport(v2In.pos);
+		gState.verts.push_back(v2In);
+		gState.verts.push_back(v0In);
+		gState.verts.push_back(v0Out);
 
-	gState.verts.push_back(v0Out);
-	gState.verts.push_back(v2Out);
-	gState.verts.push_back(v2In);
+		gState.verts.push_back(v2Out);
+		gState.verts.push_back(v1Out);
+		gState.verts.push_back(v1In);
 
-	gState.verts.push_back(v2In);
-	gState.verts.push_back(v0In);
-	gState.verts.push_back(v0Out);
-
-	gState.verts.push_back(v2Out);
-	gState.verts.push_back(v1Out);
-	gState.verts.push_back(v1In);
-
-	gState.verts.push_back(v1In);
-	gState.verts.push_back(v2In);
-	gState.verts.push_back(v2Out);
-
-
-	gState.verts.push_back(v1Out);
-	gState.verts.push_back(v0Out);
-	gState.verts.push_back(v0In);
-
-	gState.verts.push_back(v0In);
-	gState.verts.push_back(v1In);
-	gState.verts.push_back(v1Out);
+		gState.verts.push_back(v1In);
+		gState.verts.push_back(v2In);
+		gState.verts.push_back(v2Out);
 
 
+		gState.verts.push_back(v1Out);
+		gState.verts.push_back(v0Out);
+		gState.verts.push_back(v0In);
+
+		gState.verts.push_back(v0In);
+		gState.verts.push_back(v1In);
+		gState.verts.push_back(v1Out);
+	}
 }
 
 void PApplet::quad(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4)
