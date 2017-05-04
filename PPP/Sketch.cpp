@@ -3,12 +3,14 @@
 int frames = 0;
 Color bgColor;
 
-static const int NUM_PARTICLES = 300;
+static const int NUM_PARTICLES = 3000;
 
 struct Particle
 {
 	float x;
 	float y;
+	float dx;
+	float dy;
 	Color c;
 	float size;
 	bool active;
@@ -50,11 +52,11 @@ class TestSketch : public PApplet
 	void draw()
 	{
 		//background(Color(0, 0, 0, 1));
-		fill(Color(170, 170, 170, 10));
-		//noStroke();
-		stroke(Color(0));
+		//fill(Color(170, 170, 170, 10));
+		noStroke();
+		//stroke(Color(0));
 		rectMode(RectMode::CORNER);
-		rect((float)0, (float)0, (float)width(), (float)height());
+		//rect((float)0, (float)0, (float)width(), (float)height());
 		int curMillis = millis();
 
 		particles[curParticle].active = true;
@@ -62,11 +64,12 @@ class TestSketch : public PApplet
 		particles[curParticle].y      = mouseY();
 		particles[curParticle].c      = Color::white;
 		particles[curParticle].millis = curMillis;
-		particles[curParticle].size   = 100;
+		particles[curParticle].size   = 0;
+		particles[curParticle].dx     = 0;
+		particles[curParticle].dy     = 0;
 
 		rectMode(RectMode::CENTER);
 
-		
 		for (int i = 0; i < NUM_PARTICLES; ++i)
 		{
 			Particle& particle = particles[(i + curParticle) % NUM_PARTICLES];
@@ -74,13 +77,26 @@ class TestSketch : public PApplet
 			{
 				fill(particle.c);
 				rect(particle.x, particle.y, particle.size, particle.size);
-				particle.c.r  = maxt(particle.c.r - 2, 0);
-				particle.c.g  = maxt(particle.c.g - 1, 0);
-				particle.c.b  = maxt(particle.c.b - 1, 0);
-				particle.x += random(-2, 2);
-				particle.y += random(-2, 2);
-				particle.size -= 0.5;
-				if (curMillis - particle.millis > 6000)
+				particle.c.r  =  127 + 32 * sin(0.5f * particle.millis);
+				particle.c.g  =  60 + 16 * sin(0.25f * particle.millis);
+				particle.c.b  =  40 +  40 * sin(0.1f * particle.millis);
+				particle.dx   += random(-2, 2);
+				particle.dy   += random(-2, 2);
+
+				if (particle.dx >  10) { particle.dx = 10; }
+				if (particle.dy >  10) { particle.dy = 10; }
+				if (particle.dx < -10) { particle.dx = -10; }
+				if (particle.dy < -10) { particle.dy = -10; }
+
+
+				particle.x += particle.dx;
+				particle.y += particle.dy;
+				particle.size += 0.5f;
+				if (particle.size < 0)
+				{
+					particle.size = 0;
+				}
+				if (curMillis - particle.millis > 10000)
 				{
 					particle.active = false;
 				}
@@ -90,9 +106,9 @@ class TestSketch : public PApplet
 		
 		for (int i = 255; i >= 0; --i)
 		{
-			drawTriangle(frames / (float)(i + 1), i);
+			//drawTriangle(frames / (float)(i + 1), i);
 		}
-		strokeWeight(20 + 15 * sin(frames/10.f));
+		//strokeWeight(20 + 15 * sin(frames/10.f));
 		fill(Color(255, 255, 255, 50));
 		//triangle(mouseX() + 300 , mouseY(), mouseX() - 300, mouseY(), mouseX(), mouseY() + 300);
 

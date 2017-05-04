@@ -47,6 +47,8 @@ public:
 	//2D Primitives
 	static void triangle(float x1, float y1, float x2, float y2, float x3, float y3);
 	static void quad(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4);
+	static void quadStroked(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4);
+
 	static void rect(float a, float b, float c, float d);
 	static void rect(float a, float b, float c, float d, float r);
 	//Attributes

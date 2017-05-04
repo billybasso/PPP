@@ -918,6 +918,118 @@ void PApplet::quad(float x1, float y1, float x2, float y2, float x3, float y3, f
 	triangle(x3, y3, x4, y4, x1, y1);
 }
 
+void PApplet::quadStroked(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4)
+{
+	//triangle(x1, y1, x2, y2, x3, y3);
+	//triangle(x3, y3, x4, y4, x1, y1);
+	XMFLOAT2 v0Pix = { x1, y1 };
+	XMFLOAT2 v1Pix = { x2, y2 };
+	XMFLOAT2 v2Pix = { x3, y3 };
+	Vertex_2DPosColor v0;
+	Vertex_2DPosColor v1;
+	Vertex_2DPosColor v2;
+	v0.pos = pixelToViewport(v0Pix);
+	v1.pos = pixelToViewport(v1Pix);
+	v2.pos = pixelToViewport(v2Pix);
+	v0.color = gState.fillColor;
+	v1.color = gState.fillColor;
+	v2.color = gState.fillColor;
+	gState.verts.push_back(v0);
+	gState.verts.push_back(v1);
+	gState.verts.push_back(v2);
+
+	//draw stroke
+	if (gState.strokeEnabled)
+	{
+		XMFLOAT2 halfWeight = XMFLOAT2(gState.strokeWeight / 2.0f, gState.strokeWeight / 2.0f);
+		XMVECTOR halfWeightV = ::XMLoadFloat2(&halfWeight);
+
+		XMVECTOR p0V = ::XMLoadFloat2(&v0Pix);
+		XMVECTOR p1V = ::XMLoadFloat2(&v1Pix);
+		XMVECTOR p2V = ::XMLoadFloat2(&v2Pix);
+
+		XMVECTOR p0P1Perp = ::XMVectorMultiply(::XMVector2Normalize(::XMVector3Orthogonal(::XMVectorSubtract(p0V, p1V))), halfWeightV);
+		XMVECTOR p0P1_P1Outer = ::XMVectorAdd(p1V, p0P1Perp);
+		XMVECTOR p0P1_P0Outer = ::XMVectorAdd(p0V, p0P1Perp);
+		XMVECTOR p0P1_P1Inner = ::XMVectorSubtract(p1V, p0P1Perp);
+		XMVECTOR p0P1_P0Inner = ::XMVectorSubtract(p0V, p0P1Perp);
+
+		XMVECTOR p1P2Perp = ::XMVectorMultiply(::XMVector2Normalize(::XMVector3Orthogonal(::XMVectorSubtract(p1V, p2V))), halfWeightV);
+		XMVECTOR p1P2_P2Outer = ::XMVectorAdd(p2V, p1P2Perp);
+		XMVECTOR p1P2_P1Outer = ::XMVectorAdd(p1V, p1P2Perp);
+		XMVECTOR p1P2_P2Inner = ::XMVectorSubtract(p2V, p1P2Perp);
+		XMVECTOR p1P2_P1Inner = ::XMVectorSubtract(p1V, p1P2Perp);
+
+		XMVECTOR p2P0Perp = ::XMVectorMultiply(::XMVector2Normalize(::XMVector3Orthogonal(::XMVectorSubtract(p2V, p0V))), halfWeightV);
+		XMVECTOR p2P0_P0Outer = ::XMVectorAdd(p0V, p2P0Perp);
+		XMVECTOR p2P0_P2Outer = ::XMVectorAdd(p2V, p2P0Perp);
+		XMVECTOR p2P0_P0Inner = ::XMVectorSubtract(p0V, p2P0Perp);
+		XMVECTOR p2P0_P2Inner = ::XMVectorSubtract(p2V, p2P0Perp);
+
+
+		XMVECTOR p0Out = ::XMVector2IntersectLine(p2P0_P0Outer, p2P0_P2Outer, p0P1_P1Outer, p0P1_P0Outer);
+		Vertex_2DPosColor v0Out;
+		::XMStoreFloat2(&v0Out.pos, p0Out);
+		v0Out.pos = pixelToViewport(v0Out.pos);
+		v0Out.color = gState.stroke;
+
+		XMVECTOR p0In = ::XMVector2IntersectLine(p2P0_P0Inner, p2P0_P2Inner, p0P1_P1Inner, p0P1_P0Inner);
+		Vertex_2DPosColor v0In;
+		::XMStoreFloat2(&v0In.pos, p0Out);
+		v0In.pos = pixelToViewport(v0In.pos);
+		v0In.color = gState.stroke;
+
+		XMVECTOR p1Out = ::XMVector2IntersectLine(p0P1_P1Outer, p0P1_P0Outer, p1P2_P2Outer, p1P2_P1Outer);
+		Vertex_2DPosColor v1Out;
+		::XMStoreFloat2(&v1Out.pos, p0Out);
+		v1Out.pos = pixelToViewport(v1Out.pos);
+		v1Out.color = gState.stroke;
+
+		XMVECTOR p1In = ::XMVector2IntersectLine(p0P1_P1Inner, p0P1_P0Inner, p1P2_P2Inner, p1P2_P1Inner);
+		Vertex_2DPosColor v1In;
+		::XMStoreFloat2(&v1In.pos, p0Out);
+		v1In.pos = pixelToViewport(v1In.pos);
+		v1In.color = gState.stroke;
+
+		XMVECTOR p2Out = ::XMVector2IntersectLine(p2P0_P0Outer, p2P0_P2Outer, p1P2_P2Outer, p1P2_P1Outer);
+		Vertex_2DPosColor v2Out;
+		::XMStoreFloat2(&v2Out.pos, p0Out);
+		v2Out.pos = pixelToViewport(v2Out.pos);
+		v2Out.color = gState.stroke;
+
+		XMVECTOR p2In = ::XMVector2IntersectLine(p2P0_P0Inner, p2P0_P2Inner, p1P2_P2Inner, p1P2_P1Inner);
+		Vertex_2DPosColor v2In;
+		::XMStoreFloat2(&v2In.pos, p0Out);
+		v2In.color = gState.stroke;
+		v2In.pos = pixelToViewport(v2In.pos);
+
+
+		gState.verts.push_back(v0Out);
+		gState.verts.push_back(v2Out);
+		gState.verts.push_back(v2In);
+
+		gState.verts.push_back(v2In);
+		gState.verts.push_back(v0In);
+		gState.verts.push_back(v0Out);
+
+		gState.verts.push_back(v2Out);
+		gState.verts.push_back(v1Out);
+		gState.verts.push_back(v1In);
+
+		gState.verts.push_back(v1In);
+		gState.verts.push_back(v2In);
+		gState.verts.push_back(v2Out);
+
+		gState.verts.push_back(v1Out);
+		gState.verts.push_back(v0Out);
+		gState.verts.push_back(v0In);
+
+		gState.verts.push_back(v0In);
+		gState.verts.push_back(v1In);
+		gState.verts.push_back(v1Out);
+	}
+}
+
 void PApplet::rect(float a, float b, float c, float d)
 {
 	switch (gState.rectMode)
