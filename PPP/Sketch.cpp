@@ -23,7 +23,7 @@ class TestSketch : public PApplet
 	int curParticle = 0;
 	void setup()
 	{
-		size(3200, 1800);
+		size(1920, 1080);
 		frameRate(60);
 		for (int i = 0; i < NUM_PARTICLES; ++i)
 		{
@@ -76,13 +76,15 @@ class TestSketch : public PApplet
 			if (particle.active)
 			{
 				fill(particle.c);
+
 				rect(particle.x, particle.y, particle.size, particle.size);
-				particle.c.r  =  127 + 32 * sin(0.5f * particle.millis);
-				particle.c.g  =  60 + 16 * sin(0.25f * particle.millis);
-				particle.c.b  =  40 +  40 * sin(0.1f * particle.millis);
+				particle.c.r  = (unsigned char)(127 + 32 * sin(0.5f * particle.millis));
+				particle.c.g  = (unsigned char)(60 + 16 * sin(0.25f * particle.millis));
+				particle.c.b  = (unsigned char)(40 +  40 * sin(0.1f * particle.millis));
 				particle.dx   += random(-2, 2);
 				particle.dy   += random(-2, 2);
 
+				/*
 				if (particle.dx >  10) { particle.dx = 10; }
 				if (particle.dy >  10) { particle.dy = 10; }
 				if (particle.dx < -10) { particle.dx = -10; }
@@ -91,6 +93,7 @@ class TestSketch : public PApplet
 
 				particle.x += particle.dx;
 				particle.y += particle.dy;
+				*/
 				particle.size += 0.5f;
 				if (particle.size < 0)
 				{
@@ -123,7 +126,7 @@ class TestSketch : public PApplet
 
 	void mouseReleased() override
 	{
-		bgColor = Color(random(256), random(256), random(256));
+		bgColor = Color((int)random(256), (int)random(256), (int)random(256));
 	}
 
 };
