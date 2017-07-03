@@ -1,6 +1,8 @@
 #include "PPP.h"
 
 #define STRICT
+#define VC_EXTRALEAN
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <d3d11.h>
 #include <DirectXMath.h>
@@ -185,7 +187,7 @@ int CALLBACK WinMain(
 		return 1;
 	}
 	ShowWindow(gState.hWindow, nShowCmd);
-	UpdateWindow(gState.hWindow);
+	
 
 	//init d3d
 	{
@@ -257,10 +259,10 @@ int CALLBACK WinMain(
 		dxgiFactory->Release();
 
 		//create the render target view
-		ID3D11RenderTargetView* mRenderTargetView;
+		ID3D11RenderTargetView* renderTargetView;
 		ID3D11Texture2D* backBuffer;
 		swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer));
-		d3dDevice->CreateRenderTargetView(backBuffer, 0, &mRenderTargetView);
+		d3dDevice->CreateRenderTargetView(backBuffer, 0, &renderTargetView);
 		backBuffer->Release();
 
 		//create the depth/stencil buffer and view
@@ -283,7 +285,7 @@ int CALLBACK WinMain(
 		//d3dDevice->CreateTexture2D(&depthStencilDesc, 0, &mDepthStencilBuffer);
 		//d3dDevice->CreateDepthStencilView(mDepthStencilBuffer, 0, &mDepthStencilView);
 
-		d3dImmediateContext->OMSetRenderTargets(1, &mRenderTargetView, NULL);// mDepthStencilView);
+		d3dImmediateContext->OMSetRenderTargets(1, &renderTargetView, NULL);// mDepthStencilView);
 
 		//Set the viewport
 		D3D11_VIEWPORT vp;
@@ -297,7 +299,7 @@ int CALLBACK WinMain(
 
 		gState.d3dDevice           = d3dDevice;
 		gState.d3dImmediateContext = d3dImmediateContext;
-		gState.renderTargetView    = mRenderTargetView;
+		gState.renderTargetView    = renderTargetView;
 		gState.swapChain           = swapChain;
 
 		//todo -- set shared params
@@ -455,7 +457,6 @@ int CALLBACK WinMain(
 
 		getCurrentApp().background(Color(170, 170, 170, 255));
 	}
-	
 
 	QueryPerformanceFrequency((LARGE_INTEGER*)&gState.clockFrequency);
 	double period = 1.0 / gState.clockFrequency;
@@ -481,7 +482,7 @@ int CALLBACK WinMain(
 			gState.totalClockCount = counts;
 
 			dt += (counts - prevCount) * period;
-			if (dt > framePeriod)
+			while (dt > framePeriod)
 			{
 				POINT p;
 				GetCursorPos(&p);
@@ -490,7 +491,6 @@ int CALLBACK WinMain(
 				gState.mouseY = (float)p.y;
 				RECT rect;
 				GetClientRect(gState.hWindow, &rect);
-				PApplet::println(String("client rect ") + rect.right + ", " + rect.bottom);
 				Draw();
 				dt -= framePeriod;
 			}
