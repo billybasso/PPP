@@ -172,7 +172,8 @@ class String
 	char* m_data;
 	int m_length;
 
-	enum ENoInit {
+	enum ENoInit
+	{
 		NO_INIT
 	};
 	String(ENoInit) {}

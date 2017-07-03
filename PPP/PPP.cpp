@@ -1,5 +1,6 @@
 #include "PPP.h"
 
+#define STRICT
 #include <windows.h>
 #include <d3d11.h>
 #include <DirectXMath.h>
@@ -22,6 +23,8 @@ static const int DEFAULT_WINDOW_WIDTH  = 100;
 static const int DEFAULT_WINDOW_HEIGHT = 100;
 static const float DEFAULT_FRAME_RATE  = 60;
 
+UINT32 testInt;
+
 struct Vertex_2DPosColor
 {
 	XMFLOAT2 pos;
@@ -38,8 +41,8 @@ struct WinApplicationState
 	ID3D11RasterizerState* rasterizerState;
 	ID3D11BlendState* blendState;
 	IDXGISwapChain* swapChain;
-	int width       = DEFAULT_WINDOW_WIDTH;
-	int height      = DEFAULT_WINDOW_HEIGHT;
+	__int32 width       = DEFAULT_WINDOW_WIDTH;
+	__int32 height      = DEFAULT_WINDOW_HEIGHT;
 	float frameRate = DEFAULT_FRAME_RATE;
 	__int64 programStartCount;
 	__int64 clockFrequency;
@@ -66,7 +69,7 @@ static WinApplicationState gState;
 void Draw()
 {
 	gState.verts.clear();
-	getCurrentApp().draw(); //call out to game code
+	getCurrentApp().draw(); //call out to sketch code
 
 	gState.d3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	//gState.d3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
@@ -88,7 +91,7 @@ void Draw()
 
 }
 
-LRESULT CALLBACK WndProc(
+LRESULT CALLBACK windowProcedure(
 	HWND   hWnd,
 	UINT   message,
 	WPARAM wParam,
@@ -129,24 +132,24 @@ int CALLBACK WinMain(
 
 	gState.hInstance = hInstance;
 
-	static TCHAR szWindowClass[] = TEXT("win32app");
-	static TCHAR szTitle[]       = TEXT("Sketch");
+	static TCHAR windowClassName[] = TEXT("win32app");
+	static TCHAR windowTitle[]     = TEXT("Sketch");
 
-	WNDCLASSEX wcex;
-	wcex.cbSize        = sizeof(WNDCLASSEX);
-	wcex.style         = CS_HREDRAW | CS_VREDRAW;
-	wcex.lpfnWndProc   = WndProc;
-	wcex.cbClsExtra    = 0;
-	wcex.cbWndExtra    = 0;
-	wcex.hInstance     = hInstance;
-	wcex.hIcon         = NULL;
-	wcex.hCursor       = LoadCursor(NULL, IDC_ARROW);
-	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-	wcex.lpszMenuName  = NULL;
-	wcex.lpszClassName = szWindowClass;
-	wcex.hIconSm       = NULL;
+	WNDCLASSEX windowClass;
+	windowClass.cbSize        = sizeof(WNDCLASSEX);
+	windowClass.style         = CS_HREDRAW | CS_VREDRAW;
+	windowClass.lpfnWndProc   = windowProcedure;
+	windowClass.cbClsExtra    = 0;
+	windowClass.cbWndExtra    = 0;
+	windowClass.hInstance     = hInstance;
+	windowClass.hIcon         = NULL;
+	windowClass.hCursor       = LoadCursor(NULL, IDC_ARROW);
+	windowClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	windowClass.lpszMenuName  = NULL;
+	windowClass.lpszClassName = windowClassName;
+	windowClass.hIconSm       = NULL;
 
-	if (!RegisterClassEx(&wcex))
+	if (!RegisterClassEx(&windowClass))
 	{
 		MessageBox(NULL,
 			TEXT("Call to RegisterClassEx failed!"),
@@ -162,8 +165,8 @@ int CALLBACK WinMain(
 	BOOL hasMenu = false;
 	AdjustWindowRect(&desiredSize, style, false);
 	gState.hWindow = CreateWindow(
-		szWindowClass,
-		szTitle,
+		windowClassName,
+		windowTitle,
 		style,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		desiredSize.right - desiredSize.left, desiredSize.bottom - desiredSize.top,
@@ -217,8 +220,7 @@ int CALLBACK WinMain(
 
 		{
 			UINT m4xMsaaQuality;
-			d3dDevice->CheckMultisampleQualityLevels(
-				DXGI_FORMAT_R8G8B8A8_UNORM, 4, &m4xMsaaQuality);
+			d3dDevice->CheckMultisampleQualityLevels(DXGI_FORMAT_R8G8B8A8_UNORM, 4, &m4xMsaaQuality);
 			assert(m4xMsaaQuality > 0);
 		}
 
@@ -437,13 +439,13 @@ int CALLBACK WinMain(
 		D3D11_BLEND_DESC BlendStateDescription;
 		ZeroMemory(&BlendStateDescription, sizeof(D3D11_BLEND_DESC));
 		BlendStateDescription.RenderTarget[0].BlendEnable           = true;
-		BlendStateDescription.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-		BlendStateDescription.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_MAX;
+		BlendStateDescription.RenderTarget[0].BlendOp               = D3D11_BLEND_OP_ADD;
+		BlendStateDescription.RenderTarget[0].BlendOpAlpha          = D3D11_BLEND_OP_MAX;
 		BlendStateDescription.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-		BlendStateDescription.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-		BlendStateDescription.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-		BlendStateDescription.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-		BlendStateDescription.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+		BlendStateDescription.RenderTarget[0].SrcBlend              = D3D11_BLEND_SRC_ALPHA;
+		BlendStateDescription.RenderTarget[0].DestBlend             = D3D11_BLEND_INV_SRC_ALPHA;
+		BlendStateDescription.RenderTarget[0].SrcBlendAlpha         = D3D11_BLEND_ONE;
+		BlendStateDescription.RenderTarget[0].DestBlendAlpha        = D3D11_BLEND_ONE;
 		gState.d3dDevice->CreateBlendState(&BlendStateDescription, &gState.blendState);
 
 		float blendFactor[] = { 0,0, 0, 0 };

@@ -23,7 +23,7 @@ class TestSketch : public PApplet
 	int curParticle = 0;
 	void setup()
 	{
-		size(1920, 1080);
+		size(640, 360);
 		frameRate(60);
 		for (int i = 0; i < NUM_PARTICLES; ++i)
 		{
