@@ -8,8 +8,6 @@
 #include <DirectXMath.h>
 #include <DirectXPackedVector.h>
 
-#include <vector>
-
 using namespace std;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
@@ -19,7 +17,7 @@ using namespace DirectX::PackedVector;
 
 #pragma comment(lib, "d3d11")
 
-static const int NUM_VERTS = 30000;
+
 
 static const int DEFAULT_WINDOW_WIDTH  = 100;
 static const int DEFAULT_WINDOW_HEIGHT = 100;
@@ -32,6 +30,18 @@ struct Vertex_2DPosColor
 	XMFLOAT2 pos;
 	Color color;
 };
+struct Vertex_2DPosColorArray
+{
+	static const int MAX = 30000;
+	Vertex_2DPosColor data[MAX];
+	int size = 0;
+};
+inline void push(Vertex_2DPosColorArray& array, const Vertex_2DPosColor& vert)
+{
+	assert(array.size < Vertex_2DPosColorArray::MAX);
+	array.data[array.size] = vert;
+	++array.size;
+}
 
 struct WinApplicationState
 {
@@ -53,7 +63,7 @@ struct WinApplicationState
 	float mouseX = 0;
 	float mouseY = 0;
 	ID3D11Buffer* vertBuffer;
-	vector<Vertex_2DPosColor> verts;
+	Vertex_2DPosColorArray verts;
 
 	//processing state
 	//style
@@ -67,10 +77,9 @@ struct WinApplicationState
 
 static WinApplicationState gState;
 
-
 void Draw()
 {
-	gState.verts.clear();
+	gState.verts.size = 0;
 	getCurrentApp().draw(); //call out to sketch code
 
 	gState.d3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -81,12 +90,12 @@ void Draw()
 	
 	gState.d3dImmediateContext->Map(gState.vertBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	size_t vertSize = sizeof(Vertex_2DPosColor);
-	size_t byteSize = vertSize * (UINT)gState.verts.size();
-	memcpy(mappedResource.pData, gState.verts.data(), byteSize);
+	size_t byteSize = vertSize * (UINT)gState.verts.size;
+	memcpy(mappedResource.pData, gState.verts.data, byteSize);
 	gState.d3dImmediateContext->Unmap(gState.vertBuffer, 0);
 
 	gState.d3dImmediateContext->RSSetState(gState.rasterizerState);
-	gState.d3dImmediateContext->Draw((UINT)gState.verts.size(), 0);
+	gState.d3dImmediateContext->Draw((UINT)gState.verts.size, 0);
 	gState.swapChain->Present(0, 0);
 
 	gState.d3dImmediateContext->RSSetState(0); //restore the default state.
@@ -129,6 +138,7 @@ int CALLBACK WinMain(
 	LPSTR lpCmdLine,
 	int nShowCmd)
 {
+	WinApplicationState testState;
 	gState = WinApplicationState();
 	getCurrentApp().setup(); //call out to game code
 
@@ -385,15 +395,14 @@ int CALLBACK WinMain(
 
 		D3D11_BUFFER_DESC vertBufferDesc;
 		vertBufferDesc.Usage               = D3D11_USAGE_DYNAMIC;
-		vertBufferDesc.ByteWidth           = sizeof(Vertex_2DPosColor)* NUM_VERTS;
+		vertBufferDesc.ByteWidth           = sizeof(Vertex_2DPosColor)* Vertex_2DPosColorArray::MAX;
 		vertBufferDesc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
 		vertBufferDesc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
 		vertBufferDesc.MiscFlags           = 0;
 		vertBufferDesc.StructureByteStride = 0;
 
 		D3D11_SUBRESOURCE_DATA vertInitData;
-		gState.verts.reserve(NUM_VERTS);
-		vertInitData.pSysMem = gState.verts.data();
+		vertInitData.pSysMem = gState.verts.data;
 
 		gState.d3dDevice->CreateBuffer(&vertBufferDesc, &vertInitData, &gState.vertBuffer);
 
@@ -823,9 +832,9 @@ void PApplet::triangle(float x1, float y1, float x2, float y2, float x3, float y
 	v0.color = gState.fillColor;
 	v1.color = gState.fillColor;
 	v2.color = gState.fillColor;
-	gState.verts.push_back(v0);
-	gState.verts.push_back(v1);
-	gState.verts.push_back(v2);
+	push(gState.verts, v0);
+	push(gState.verts, v1);
+	push(gState.verts, v2);
 
 	//draw stroke
 	if (gState.strokeEnabled)
@@ -887,30 +896,30 @@ void PApplet::triangle(float x1, float y1, float x2, float y2, float x3, float y
 		v1In.pos = pixelToViewport(v1In.pos);
 		v2In.pos = pixelToViewport(v2In.pos);
 
-		gState.verts.push_back(v0Out);
-		gState.verts.push_back(v2Out);
-		gState.verts.push_back(v2In);
+		push(gState.verts, v0Out);
+		push(gState.verts, v2Out);
+		push(gState.verts, v2In);
 
-		gState.verts.push_back(v2In);
-		gState.verts.push_back(v0In);
-		gState.verts.push_back(v0Out);
+		push(gState.verts, v2In);
+		push(gState.verts, v0In);
+		push(gState.verts, v0Out);
 
-		gState.verts.push_back(v2Out);
-		gState.verts.push_back(v1Out);
-		gState.verts.push_back(v1In);
+		push(gState.verts, v2Out);
+		push(gState.verts, v1Out);
+		push(gState.verts, v1In);
 
-		gState.verts.push_back(v1In);
-		gState.verts.push_back(v2In);
-		gState.verts.push_back(v2Out);
+		push(gState.verts, v1In);
+		push(gState.verts, v2In);
+		push(gState.verts, v2Out);
 
 
-		gState.verts.push_back(v1Out);
-		gState.verts.push_back(v0Out);
-		gState.verts.push_back(v0In);
+		push(gState.verts, v1Out);
+		push(gState.verts, v0Out);
+		push(gState.verts, v0In);
 
-		gState.verts.push_back(v0In);
-		gState.verts.push_back(v1In);
-		gState.verts.push_back(v1Out);
+		push(gState.verts, v0In);
+		push(gState.verts, v1In);
+		push(gState.verts, v1Out);
 	}
 }
 
@@ -936,9 +945,9 @@ void PApplet::quadStroked(float x1, float y1, float x2, float y2, float x3, floa
 	v0.color = gState.fillColor;
 	v1.color = gState.fillColor;
 	v2.color = gState.fillColor;
-	gState.verts.push_back(v0);
-	gState.verts.push_back(v1);
-	gState.verts.push_back(v2);
+	push(gState.verts, v0);
+	push(gState.verts, v1);
+	push(gState.verts, v2);
 
 	//draw stroke
 	if (gState.strokeEnabled)
@@ -1006,29 +1015,24 @@ void PApplet::quadStroked(float x1, float y1, float x2, float y2, float x3, floa
 		v2In.pos = pixelToViewport(v2In.pos);
 
 
-		gState.verts.push_back(v0Out);
-		gState.verts.push_back(v2Out);
-		gState.verts.push_back(v2In);
-
-		gState.verts.push_back(v2In);
-		gState.verts.push_back(v0In);
-		gState.verts.push_back(v0Out);
-
-		gState.verts.push_back(v2Out);
-		gState.verts.push_back(v1Out);
-		gState.verts.push_back(v1In);
-
-		gState.verts.push_back(v1In);
-		gState.verts.push_back(v2In);
-		gState.verts.push_back(v2Out);
-
-		gState.verts.push_back(v1Out);
-		gState.verts.push_back(v0Out);
-		gState.verts.push_back(v0In);
-
-		gState.verts.push_back(v0In);
-		gState.verts.push_back(v1In);
-		gState.verts.push_back(v1Out);
+		push(gState.verts, v0Out);
+		push(gState.verts, v2Out);
+		push(gState.verts, v2In);
+		push(gState.verts, v2In);
+		push(gState.verts, v0In);
+		push(gState.verts, v0Out);
+		push(gState.verts, v2Out);
+		push(gState.verts, v1Out);
+		push(gState.verts, v1In);
+		push(gState.verts, v1In);
+		push(gState.verts, v2In);
+		push(gState.verts, v2Out);
+		push(gState.verts, v1Out);
+		push(gState.verts, v0Out);
+		push(gState.verts, v0In);
+		push(gState.verts, v0In);
+		push(gState.verts, v1In);
+		push(gState.verts, v1Out);
 	}
 }
 
